@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PriArte Ateliê · Papelaria personalizada</title>
+<link id="linkManifest" rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d1512">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PriArte">
+<style>
+  :root{
+    --bg:#1d1512; --panel:#2b211c; --ink:#f3e9df; --muted:#b5a08e;
+    --accent:#d4909b; --accent-soft:#4d3138; --line:#473a30;
+    --on-accent:#3a2126;
+    --blue:#8fb4e8; --green:#83c9a0; --amber:#dfb96f; --teal:#7fc4c4; --red:#dd8884; --gray:#9a9a9a;
+    --input:#241b16;
+    --radius:10px; --shadow:0 1px 4px rgba(0,0,0,.4);
+  }
+  body.claro{
+    --bg:#f5ece3; --panel:#fffaf4; --ink:#4a3629; --muted:#9a846f;
+    --accent:#b76e79; --accent-soft:#f3dfe1; --line:#e9d9ca;
+    --on-accent:#ffffff;
+    --blue:#4a7ab5; --green:#3d8b5f; --amber:#a5742a; --teal:#3d8b8b; --red:#b0413e; --gray:#7a7a7a;
+    --input:#ffffff;
+    --shadow:0 1px 4px rgba(90,60,40,.15);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header.top{background:var(--panel);border-bottom:2px solid var(--line);padding:10px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+  header.top h1{font-size:1.25rem;margin:0;color:var(--accent);white-space:nowrap;display:flex;align-items:center;gap:10px;font-family:Georgia,'Times New Roman',serif;letter-spacing:.02em}
+  #logoImg{height:42px;width:42px;border-radius:50%;object-fit:cover;box-shadow:var(--shadow)}
+  nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
+  nav.tabs button{border:none;background:transparent;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.95rem;color:var(--muted);font-weight:600}
+  nav.tabs button:hover{background:var(--accent-soft);color:var(--accent)}
+  nav.tabs button.ativo{background:var(--accent);color:var(--on-accent)}
+  main{max-width:1150px;margin:0 auto;padding:18px}
+  section.view{display:none}
+  section.view.ativa{display:block}
+  .barra{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .barra h2{margin:0;font-size:1.2rem;flex:0 0 auto}
+  .subtabs{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+  .subtabs button{border:none;background:transparent;color:var(--muted);padding:6px 14px;border-radius:999px;cursor:pointer;font-weight:600;font-size:.88rem}
+  .subtabs button:hover{color:var(--accent)}
+  .subtabs button.ativo{background:var(--accent);color:var(--on-accent)}
+  .spacer{flex:1}
+  input,select,textarea{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--input);color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  input:disabled,select:disabled{opacity:.6;background:color-mix(in srgb,var(--muted) 12%,var(--input));color:var(--muted)}
+  input.busca{min-width:240px}
+  /* lista de sugestões própria (substitui o datalist nativo, que tem estilo bugado) */
+  .sug-wrap{position:relative}
+  .sug-list{position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:250px;overflow:auto;background:var(--panel);border:1px solid var(--accent);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:80;display:none}
+  .sug-list.aberta{display:block}
+  .sug-item{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;border:none;background:transparent;color:var(--ink);text-align:left;padding:9px 12px;cursor:pointer;font-size:.92rem}
+  .sug-item:hover,.sug-item.foco{background:var(--accent-soft);color:var(--accent)}
+  .sug-item .preco{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:10px 14px;min-height:44px;cursor:pointer;font:inherit;font-weight:600;font-size:.9rem;background:var(--accent);color:var(--on-accent);text-decoration:none}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.sec{background:var(--accent-soft);color:var(--accent)}
+  .btn.neutro{background:color-mix(in srgb,var(--muted) 15%,var(--panel));color:var(--ink)}
+  .btn.perigo{background:color-mix(in srgb,var(--red) 15%,var(--panel));color:var(--red)}
+  .btn.mini{padding:8px 10px;font-size:.85rem;min-height:40px}
+  table.grid{width:100%;border-collapse:collapse;background:var(--panel);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  table.grid th{background:color-mix(in srgb,var(--muted) 14%,var(--panel));text-align:left;padding:9px 10px;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+  table.grid td{padding:8px 10px;border-top:1px solid var(--line);font-size:.92rem;vertical-align:top}
+  table.grid tr:hover td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+  .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:18px}
+  .card{background:var(--panel);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);border-left:5px solid var(--accent)}
+  .card .rotulo{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .card .valor{font-size:1.45rem;font-weight:700;margin-top:4px}
+  .card .sub{font-size:.85rem;color:var(--muted)}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700;white-space:nowrap;color:var(--bc,var(--gray));background:color-mix(in srgb,var(--bc,var(--gray)) 17%,transparent)}
+  .b-aberto,.b-em_producao{--bc:var(--blue)}
+  .b-aprovado,.b-entregue,.b-ok{--bc:var(--green)}
+  .b-perdido,.b-semcontrole{--bc:var(--gray)}
+  .b-pendente,.b-baixo{--bc:var(--amber)}
+  .b-pronto{--bc:var(--teal)}
+  .b-cancelado,.b-zerado{--bc:var(--red)}
+  .neg{color:var(--red);font-weight:700}
+  .painel{background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+  .duas-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:800px){.duas-col{grid-template-columns:1fr}}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;overflow:auto;padding:30px 12px}
+  .overlay.aberto{display:block}
+  .modal{background:var(--panel);max-width:860px;margin:0 auto;border-radius:12px;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .modal h3{margin-top:0;color:var(--accent)}
+  .modal .fechar{float:right;border:none;background:transparent;font-size:1.3rem;cursor:pointer;color:var(--muted)}
+  .formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px}
+  .campo{display:flex;flex-direction:column;gap:4px}
+  .campo label{font-size:.8rem;font-weight:600;color:var(--muted)}
+  .campo.largo{grid-column:1/-1}
+  .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .resumo-linha{display:flex;justify-content:space-between;padding:4px 0;font-size:.95rem}
+  .resumo-linha.total{border-top:2px solid var(--line);font-weight:700;font-size:1.1rem;margin-top:6px;padding-top:8px}
+  .muted{color:var(--muted);font-size:.85rem}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;z-index:99;display:none;box-shadow:var(--shadow)}
+  #printArea{display:none}
+  /* Organização para o trabalho diário e telas de toque. */
+  :root{
+    --radius:14px;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-right:env(safe-area-inset-right,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+    --safe-left:env(safe-area-inset-left,0px);
+  }
+  html{scroll-padding-top:calc(82px + var(--safe-top))}
+  body{line-height:1.45}
+  body.claro{--muted:#7d6858}
+  button,input,select,textarea{min-width:0}
+  button{touch-action:manipulation}
+  button:focus-visible,.btn:focus-within,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  header.top{padding:calc(12px + var(--safe-top)) max(20px,var(--safe-right)) 12px max(20px,var(--safe-left));gap:16px;border-bottom:1px solid var(--line);flex-wrap:nowrap}
+  header.top h1{font-size:1.15rem;flex-shrink:0;gap:10px;min-width:0}
+  header.top h1 span{overflow:hidden;text-overflow:ellipsis;max-width:230px}
+  #logoImg{height:40px;width:40px;flex-shrink:0}
+  nav.tabs{flex-wrap:nowrap;gap:3px;flex:1;justify-content:center}
+  nav.tabs button{min-height:44px;padding:9px 11px;font-size:.87rem;display:flex;align-items:center;justify-content:center;gap:7px}
+  nav.tabs button svg{display:none}
+  .icone{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+  .config-mobile{display:none}
+  .config-mobile{color:var(--muted)}
+  #btnSync{flex-shrink:0;white-space:nowrap}
+  main{max-width:1280px;padding:28px max(24px,var(--safe-right)) calc(40px + var(--safe-bottom)) max(24px,var(--safe-left))}
+  .barra{gap:12px;margin-bottom:20px}
+  .barra h2{font-size:1.55rem;letter-spacing:-.03em}
+  .barra .busca{width:280px;min-width:0}
+  input,select,textarea{min-height:44px;font-size:16px;max-width:100%}
+  input[type=checkbox]{min-height:20px;width:20px;height:20px;accent-color:var(--accent)}
+  .campo{min-width:0;gap:6px}
+  .campo label{font-size:.85rem;color:var(--ink);font-weight:500}
+  .campo small{font-size:.8rem;color:var(--muted)}
+  .formgrid{gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));margin-bottom:18px}
+  .cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px}
+  .card{border:1px solid var(--line);border-left:3px solid var(--accent);padding:18px;min-width:0}
+  .card .rotulo{font-size:.85rem;text-transform:none;letter-spacing:0}
+  .card .valor{font-size:1.85rem;letter-spacing:-.04em;margin:6px 0 3px}
+  .card .sub{font-size:.8rem}
+  .painel{padding:22px;border:1px solid var(--line)}
+  .painel h3{font-size:1.08rem;margin:0 0 18px}
+  .painel h4{font-size:.95rem;margin:24px 0 12px}
+  .duas-col{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:22px}
+  .painel-titulo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+  .painel-titulo h3{margin:0}
+  .link-acao{border:0;background:none;color:var(--accent);font:inherit;font-size:.85rem;cursor:pointer;padding:10px 0;min-height:44px;flex-shrink:0}
+  .lista-trabalhos{display:grid}
+  .trabalho{display:flex;align-items:center;gap:14px;width:100%;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);padding:16px 0;text-align:left;font:inherit;cursor:pointer}
+  .trabalho:hover .trabalho-nome{color:var(--accent)}
+  .trabalho-info{display:grid;gap:4px;flex:1;min-width:0}
+  .trabalho-nome{font-weight:600;font-size:.95rem;overflow-wrap:anywhere}
+  .trabalho-info .muted{font-size:.8rem}
+  .trabalho-fim{display:grid;justify-items:end;gap:7px;flex-shrink:0;font-size:.85rem}
+  .vazio{padding:26px 8px;text-align:center;color:var(--muted);font-size:.9rem}
+  .vazio strong{display:block;color:var(--ink);font-weight:500;margin-bottom:5px}
+  .contagem{font-size:.8rem;color:var(--muted);margin:14px 0}
+  table.grid{border:1px solid var(--line);box-shadow:none}
+  table.grid th{font-size:.75rem;text-transform:none;letter-spacing:0;padding:14px 12px;white-space:nowrap}
+  table.grid td{padding:12px;vertical-align:middle}
+  .modal table.grid th{white-space:normal}
+  .modal table.grid td.muted{overflow-wrap:anywhere}
+  table.grid td:first-child .btn.sec{background:none;color:var(--ink);text-align:left;justify-content:flex-start;padding:6px 0;font-weight:600;white-space:normal}
+  table.grid td:first-child .btn.sec:hover{color:var(--accent)}
+  .acoes-celula{white-space:normal;min-width:160px}
+  .acoes-celula .btn{margin:2px 0}
+  .resumo-linha{gap:16px;padding:7px 0;align-items:baseline}
+  .resumo-linha>:last-child{flex-shrink:0;text-align:right}
+  .resumo-linha>:first-child{min-width:0;overflow-wrap:anywhere}
+  .overlay{inset:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);background:none;padding:32px 16px;overscroll-behavior:contain;scroll-padding-block:20px}
+  .overlay::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1}
+  .modal{padding:28px;overflow-wrap:anywhere}
+  .modal h3{font-size:1.25rem;line-height:1.35;padding-right:36px;margin:0 0 22px}
+  .modal .fechar{width:44px;height:44px;margin:-12px -12px 0 0;border-radius:50%}
+  body.modal-aberto{overflow:hidden}
+  details{border-top:1px solid var(--line);padding:14px 0;margin-top:14px}
+  details summary{cursor:pointer;font-size:.9rem;font-weight:500;min-height:30px}
+  details[open] summary{margin-bottom:14px}
+  .config-bloco+.config-bloco{border-top:1px solid var(--line);padding-top:22px;margin-top:24px}
+  .cf-linha{grid-template-columns:minmax(0,1fr) 110px 40px;gap:8px;margin-bottom:10px}
+  .cf-linha .btn{width:40px;padding:8px}
+  .backup-input{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .toast{max-width:calc(100% - max(14px,var(--safe-left)) - max(14px,var(--safe-right)));width:max-content;font-size:.9rem;bottom:calc(18px + var(--safe-bottom))}
+  @media(min-width:761px) and (max-width:1100px){
+    header.top{flex-wrap:wrap;gap:8px 16px}
+    nav.tabs{order:3;flex-basis:100%;justify-content:flex-start}
+    #btnSync{margin-left:auto}
+  }
+  @media(max-width:900px){
+    .duas-col{grid-template-columns:1fr}
+    table.grid.responsive,table.grid.responsive tbody{display:block;background:none;border:0;overflow:visible;box-shadow:none}
+    table.grid.responsive thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+    table.grid.responsive tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;padding:18px;margin-bottom:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+    table.grid.responsive td{display:block;border:0;padding:0;width:auto!important;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;font-size:.9rem}
+    table.grid.responsive td::before{content:attr(data-label);display:block;color:var(--muted);font-size:.75rem;margin-bottom:4px}
+    table.grid.responsive td.principal{grid-column:1/-1;font-size:1rem}
+    table.grid.responsive td.principal::before,table.grid.responsive td.acoes-celula::before,table.grid.responsive td.vazia::before{display:none}
+    table.grid.responsive td.principal .btn{font-size:1rem;padding:0;min-height:44px}
+    table.grid.responsive td.secundaria{display:none}
+    table.grid.responsive td.acoes-celula{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;min-width:0;border-top:1px solid var(--line);padding-top:12px}
+    table.grid.responsive td.acoes-celula:empty{display:none}
+    table.grid.responsive td.vazia{grid-column:1/-1;padding:18px 0;text-align:center}
+    table.grid.responsive td input{width:100%!important}
+    .modal table.grid.responsive tr{background:var(--input)}
+  }
+  @media(max-width:760px){
+    header.top{padding:calc(10px + var(--safe-top)) max(14px,var(--safe-right)) 10px max(14px,var(--safe-left));gap:8px}
+    header.top h1{flex:1;font-size:1.05rem;gap:8px}
+    header.top h1 span{max-width:none}
+    #logoImg{width:34px;height:34px}
+    #btnSync{font-size:.78rem;padding:8px;min-height:44px}
+    .config-mobile{display:inline-flex;width:44px;padding:10px;flex-shrink:0;background:none}
+    .config-mobile.ativo{color:var(--accent);background:var(--accent-soft)}
+    nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--panel);border-top:1px solid var(--line);padding:6px max(6px,var(--safe-right)) calc(6px + var(--safe-bottom)) max(6px,var(--safe-left));gap:2px}
+    nav.tabs button{flex:1;min-width:0;flex-direction:column;gap:3px;padding:7px 2px;font-size:.67rem;border-radius:10px;min-height:54px}
+    nav.tabs button svg{display:block}
+    nav.tabs button.ativo{background:var(--accent-soft);color:var(--accent)}
+    nav.tabs button[data-view=config]{display:none}
+    main{padding:22px max(16px,var(--safe-right)) calc(92px + var(--safe-bottom)) max(16px,var(--safe-left))}
+    .barra{gap:10px;margin-bottom:18px}
+    .barra h2{font-size:1.4rem;flex:1}
+    .barra .spacer{display:none}
+    .barra .busca{order:3;width:100%;flex-basis:100%}
+    .barra select{order:3;flex-basis:100%;width:100%}
+    .barra .btn{padding:10px 12px;font-size:.84rem}
+    .barra.inicio .btn{flex:1}
+    .barra.inicio h2{flex-basis:100%;margin-bottom:4px}
+    .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:20px}
+    .card{padding:14px 12px}
+    .card .rotulo{font-size:.78rem}
+    .card .valor{font-size:1.6rem}
+    .painel{padding:18px;margin-bottom:14px}
+    .duas-col{gap:0}
+    .trabalho{gap:10px}
+    .trabalho-nome{font-size:.88rem}
+    .trabalho-fim{max-width:45%}
+    .badge{font-size:.7rem;padding:4px 8px;white-space:normal}
+    .overlay{padding:12px 10px}
+    .modal{padding:20px 16px;border-radius:16px;max-width:100%}
+    .modal h3{font-size:1.15rem}
+    .modal .formgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
+    .modal .campo.largo{grid-column:1/-1}
+    .modal .campo[style*=max-width]{max-width:none!important}
+    .modal .acoes .btn{flex:1;min-width:100px}
+    .modal .acoes .btn.mini{flex:initial}
+    .resumo-linha{font-size:.88rem;gap:10px}
+    .resumo-linha.total{font-size:1rem}
+    .cf-linha{grid-template-columns:minmax(0,1fr) 88px 40px;gap:6px}
+    .toast{bottom:calc(84px + var(--safe-bottom))}
+  }
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+  @media print{
+    body>*{display:none !important}
+    #printArea{display:block !important;font-family:Arial,sans-serif;color:#000;padding:20px}
+    #printArea h1{font-size:1.3rem;margin:0}
+    #printArea table{width:100%;border-collapse:collapse;margin-top:12px}
+    #printArea th,#printArea td{border:1px solid #999;padding:6px 8px;font-size:.9rem;text-align:left}
+    #printArea .tot{margin-top:10px;font-size:1.1rem;font-weight:bold;text-align:right}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1><img id="logoImg" alt="PriArte Ateliê"> <span id="tituloLoja">PriArte Ateliê</span></h1>
+  <nav class="tabs" aria-label="Navegação principal">
+    <button data-view="dashboard" class="ativo" aria-current="page"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></svg>Início</button>
+    <button data-view="materiais"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 4Z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>Estoque</button>
+    <button data-view="produtos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h11l4 4v14H5Z"/><path d="M15 3v5h5M9 12h7M9 16h5"/></svg>Produtos</button>
+    <button data-view="orcamentos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg>Orçamentos</button>
+    <button data-view="pedidos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 12l3 3 5-6"/></svg>Pedidos</button>
+    <button data-view="config">Configurações</button>
+  </nav>
+  <button class="btn neutro mini" id="btnSync" onclick="sincronizarAgora()" title="Sincronização de dados entre dispositivos">☁️ Conectar</button>
+  <button class="btn config-mobile" data-config onclick="showView('config')" aria-label="Configurações"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+</header>
+<main>
+  <section id="view-dashboard" class="view ativa"></section>
+  <section id="view-materiais" class="view"></section>
+  <section id="view-produtos" class="view"></section>
+  <section id="view-orcamentos" class="view"></section>
+  <section id="view-pedidos" class="view"></section>
+  <section id="view-config" class="view"></section>
+</main>
+<div class="overlay" id="overlay"><div class="modal" id="modal" role="dialog" aria-modal="true" tabindex="-1"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="printArea"></div>
+
+<script>
+'use strict';
+/* ================= util ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const BRL = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+const fmtBRL = v => BRL.format(Number(v)||0);
+function parseNum(s){
+  if(typeof s==='number') return isFinite(s)?s:0;
+  s=(s||'').toString().trim(); if(!s) return 0;
+  if(s.indexOf(',')>=0) s=s.replace(/\./g,'').replace(',','.');
+  const n=parseFloat(s); return isFinite(n)?n:0;
+}
+function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function uid(p){return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function pad2(n){return String(n).padStart(2,'0');}
+function hojeISO(){const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function fmtData(iso){if(!iso)return'';const p=iso.slice(0,10).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso;}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600);}
+
+/* ================= estrutura vazia; dados somente no armazenamento privado ================= */
+const STORE_KEY='papelariaDBv1';
+const APP_VERSAO='2026.10.09-6';
+const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
+const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
+const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
+
+function criarDBVazio(){
+  return {
+    versao:9,seq:{orcamento:1,pedido:1},
+    config:{nomeLoja:'PriArte Ateliê',contato:'',salario:0,diasMes:0,horasDia:0,divisorCustoFixo:0,custosFixos:[]},
+    materiais:[],produtos:[],lotes:[],orcamentos:[],pedidos:[]
+  };
+}
+
+let db;
+function loadDB(){
+  try{const raw=localStorage.getItem(STORE_KEY);if(raw){db=JSON.parse(raw);return;}}catch(e){console.warn('localStorage indisponível',e);}
+  db=criarDBVazio();persistirDB();
+}
+function persistirDB(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(db));}catch(e){console.warn(e);}
+}
+function saveDB(){
+  if(!aplicandoSync){
+    db.rev=(db.rev||0)+1;
+    db.atualizadoEm=new Date().toISOString();
+  }
+  persistirDB();
+  if(!aplicandoSync)registrarAlteracaoSync();
+}
+
+/* Compatibilidade de formato: usa somente os dados já existentes no aparelho ou no arquivo privado. */
+function migrarDB(persistir=true){
+  const versaoAnterior=db.versao||1;
+  const precisaMigrar=!db.lotes||versaoAnterior<9;
+  if(!db.lotes)db.lotes=[];
+  if(versaoAnterior<2){
+    const hoje=hojeISO();
+    db.materiais.forEach(m=>{
+      if(m.controlaEstoque!==undefined)return;
+      const unit=(m.preco!=null)?(m.preco+(m.frete||0)/(m.numItens||1))/(m.quantidade||1):(m.custoUnitario||0);
+      const semControle=/^impress[ãa]o/i.test(m.nome||'');
+      m.custoUnitario=unit;m.controlaEstoque=!semControle;m.estoqueMinimo=0;
+      m.estoqueAtual=semControle?0:(m.quantidade||0);
+      if(!semControle&&(m.quantidade||0)>0)db.lotes.push({id:uid('l'),materialId:m.id,data:hoje,quantidade:m.quantidade,qtdRestante:m.quantidade,preco:m.preco||0,frete:m.frete||0,numItens:m.numItens||1,valorUnitario:unit,fornecedor:m.fornecedor||'',obs:'Compra importada',criadoEm:new Date().toISOString()});
+      delete m.preco;delete m.quantidade;delete m.frete;delete m.numItens;
+    });
+  }
+  if(versaoAnterior<8)db.produtos.forEach(p=>{delete p.precoMarketplaceManual;delete p.baseCalculo;});
+  if(versaoAnterior<9){
+    const titularizar=d=>{if(!d.titulo)d.titulo=(d.itens&&d.itens.length?d.itens[0].nome:'')||'';};
+    db.orcamentos.forEach(titularizar);db.pedidos.forEach(titularizar);
+  }
+  db.versao=9;
+  if(precisaMigrar&&persistir)saveDB();
+}
+
+/* ================= cálculos ================= */
+function fmtQtd(v){const n=Math.round((Number(v)||0)*100)/100;return String(n).replace('.',',');}
+/* custo unitário do material = custo médio ponderado dos lotes em estoque;
+   sem estoque, usa o último lote conhecido (para a precificação não quebrar) */
+function custoUnit(m){
+  if(m.controlaEstoque===false)return m.custoUnitario||0;
+  const lotes=db.lotes.filter(l=>l.materialId===m.id&&l.qtdRestante>0);
+  const qtd=lotes.reduce((s,l)=>s+l.qtdRestante,0);
+  if(qtd>0)return lotes.reduce((s,l)=>s+l.qtdRestante*l.valorUnitario,0)/qtd;
+  const ult=db.lotes.filter(l=>l.materialId===m.id).sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
+  if(ult)return ult.valorUnitario;
+  return m.custoUnitario||0;
+}
+function valorEmEstoque(m){return (m.estoqueAtual||0)*custoUnit(m);}
+function statusEstoque(m){
+  if(m.controlaEstoque===false)return['semcontrole','Sem estoque físico'];
+  const e=m.estoqueAtual||0;
+  if(e<=0)return['zerado','Esgotado'];
+  if(e<=(m.estoqueMinimo||0))return['baixo','Repor'];
+  return['ok','Disponível'];
+}
+function materiaisEmAlerta(){return db.materiais.filter(m=>m.controlaEstoque!==false&&(m.estoqueAtual||0)<=(m.estoqueMinimo||0));}
+/* consolida a necessidade de materiais de uma lista de itens (pedido/orçamento) */
+function necessidadeMateriais(itens){
+  const need={};
+  for(const it of itens){
+    if(!it.produtoId)continue;
+    const p=produtoById(it.produtoId);if(!p)continue;
+    for(const r of (p.itens||[])){
+      const m=materialById(r.materialId);if(!m||m.controlaEstoque===false)continue;
+      need[r.materialId]=(need[r.materialId]||0)+r.qtd*it.qtd;
+    }
+  }
+  return need;
+}
+function faltasEstoque(itens){
+  const need=necessidadeMateriais(itens);
+  return Object.keys(need).map(mid=>{const m=materialById(mid);
+    return {nome:m.nome,un:m.unidade,precisa:Math.round(need[mid]*100)/100,tem:Math.round((m.estoqueAtual||0)*100)/100};
+  }).filter(x=>x.precisa>x.tem);
+}
+/* baixa FIFO: consome do lote mais antigo primeiro; guarda o rastro para estorno */
+function baixarEstoque(ped){
+  const need=necessidadeMateriais(ped.itens);
+  ped.baixas=[];
+  for(const mid of Object.keys(need)){
+    const m=materialById(mid);if(!m)continue;
+    let rest=need[mid];
+    const lotes=db.lotes.filter(l=>l.materialId===mid&&l.qtdRestante>0).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+    for(const l of lotes){
+      if(rest<=0.00001)break;
+      const take=Math.min(l.qtdRestante,rest);
+      l.qtdRestante=Math.round((l.qtdRestante-take)*10000)/10000;
+      rest-=take;
+      ped.baixas.push({materialId:mid,loteId:l.id,qtd:Math.round(take*10000)/10000});
+    }
+    if(rest>0.00001)ped.baixas.push({materialId:mid,loteId:null,qtd:Math.round(rest*10000)/10000});
+    m.estoqueAtual=Math.round(((m.estoqueAtual||0)-need[mid])*10000)/10000;
+  }
+  ped.estoqueBaixado=true;
+}
+function estornarEstoque(ped){
+  for(const b of (ped.baixas||[])){
+    if(b.loteId){const l=db.lotes.find(x=>x.id===b.loteId);if(l)l.qtdRestante=Math.round((l.qtdRestante+b.qtd)*10000)/10000;}
+    const m=materialById(b.materialId);if(m)m.estoqueAtual=Math.round(((m.estoqueAtual||0)+b.qtd)*10000)/10000;
+  }
+  ped.baixas=[];ped.estoqueBaixado=false;
+}
+/* quantas unidades do produto o estoque atual permite produzir */
+function producivel(p){
+  let min=Infinity,tem=false;
+  for(const r of (p.itens||[])){
+    const m=materialById(r.materialId);if(!m||m.controlaEstoque===false)continue;
+    tem=true;min=Math.min(min,Math.floor((m.estoqueAtual||0)/r.qtd));
+  }
+  return tem?min:null;
+}
+function materialById(id){return db.materiais.find(m=>m.id===id);}
+function produtoById(id){return db.produtos.find(p=>p.id===id);}
+function valorHoraTrabalho(){const c=db.config;return c.diasMes*c.horasDia>0?c.salario/(c.diasMes*c.horasDia):0;}
+function custoFixoHora(){const c=db.config;const tot=c.custosFixos.reduce((s,i)=>s+(Number(i.valor)||0),0);return c.divisorCustoFixo>0?tot/c.divisorCustoFixo:0;}
+function custoProduto(p){
+  const tempoH=(p.tempoMin||0)/60;
+  let mat=0;const detalhe=[];
+  for(const it of (p.itens||[])){
+    const m=materialById(it.materialId);if(!m)continue;
+    const vu=custoUnit(m);const vt=vu*it.qtd;mat+=vt;
+    detalhe.push({nome:m.nome,qtd:it.qtd,un:m.unidade,vu,vt});
+  }
+  const maoDeObra=valorHoraTrabalho()*tempoH;
+  const custoFixo=custoFixoHora()*tempoH;
+  return {materiais:mat,maoDeObra,custoFixo,total:mat+maoDeObra+custoFixo,detalhe};
+}
+/* equação de precificação: (materiais + mão de obra + custo fixo) × (1 + lucro%) */
+function precoSugerido(p){return custoProduto(p).total*(1+(p.lucroPct||0)/100);}
+function precoFinal(p){return p.precoFinalManual!=null?p.precoFinalManual:precoSugerido(p);}
+function lucroProduto(p){return precoFinal(p)-custoProduto(p).total;}
+
+/* ================= navegação ================= */
+let view='dashboard';
+function showView(v){
+  view=v;
+  $$('nav.tabs button').forEach(b=>{
+    b.classList.toggle('ativo',b.dataset.view===v);
+    if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  });
+  $('[data-config]').classList.toggle('ativo',v==='config');
+  $$('section.view').forEach(s=>s.classList.toggle('ativa',s.id==='view-'+v));
+  render();
+  window.scrollTo(0,0);
+}
+$$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+function render(){
+  $('#tituloLoja').textContent=db.config.nomeLoja||'PriArte Ateliê';
+  if(view==='dashboard')renderDashboard();
+  else if(view==='materiais')renderMateriais();
+  else if(view==='produtos')renderProdutos();
+  else if(view==='orcamentos')renderOrcamentos();
+  else if(view==='pedidos')renderPedidos();
+  else if(view==='config')renderConfig();
+  prepararInterface($('#view-'+view));
+}
+
+function prepararInterface(raiz){
+  raiz.querySelectorAll('table.grid').forEach(tabela=>{
+    const cabecalho=Array.from(tabela.querySelectorAll('thead th'));
+    if(!cabecalho.length)return;
+    tabela.classList.add('responsive');
+    tabela.querySelectorAll('tbody tr').forEach(linha=>Array.from(linha.cells).forEach((celula,i)=>{
+      if(celula.colSpan>1){celula.classList.add('vazia');return;}
+      const rotulo=cabecalho[i]?.textContent.trim()||'';
+      celula.dataset.label=rotulo;
+      if(cabecalho[i]?.classList.contains('secundaria'))celula.classList.add('secundaria');
+      if(i===0)celula.classList.add('principal');
+      if(!rotulo)celula.classList.add('acoes-celula');
+      celula.querySelectorAll('input').forEach(input=>input.setAttribute('aria-label',rotulo+' · '+linha.cells[0].textContent.trim()));
+    }));
+  });
+  raiz.querySelectorAll('.campo').forEach((campo,i)=>{
+    const label=campo.querySelector('label'),input=campo.querySelector('input,select,textarea');
+    if(!label||!input||label.contains(input))return;
+    if(!input.id)input.id=raiz.id+'-campo-'+i;
+    label.htmlFor=input.id;
+  });
+  raiz.querySelectorAll('.busca').forEach(input=>input.setAttribute('aria-label',input.placeholder));
+  raiz.querySelectorAll('button').forEach(b=>{
+    if(b.hasAttribute('aria-label'))return;
+    if(!['✕','✖','✗','✘'].includes(b.textContent.trim()))return;
+    const nome=b.closest('tr')?.cells[0]?.textContent.trim()||'';
+    b.setAttribute('aria-label',(b.getAttribute('onclick')?.startsWith('excluir')?'Excluir':'Remover')+(nome?' '+nome:''));
+  });
+}
+
+/* ================= modal ================= */
+let focoAntesModal=null;
+function abrirModal(html){
+  const jaAberto=$('#overlay').classList.contains('aberto');
+  if(!jaAberto)focoAntesModal=document.activeElement;
+  const modal=$('#modal');
+  modal.innerHTML='<button class="fechar" onclick="fecharModal()" aria-label="Fechar janela">✕</button>'+html;
+  prepararInterface(modal);
+  const titulo=modal.querySelector('h3');
+  if(titulo){titulo.id='tituloModal';modal.setAttribute('aria-labelledby','tituloModal');}
+  $('#overlay').classList.add('aberto');document.body.classList.add('modal-aberto');
+  if(!jaAberto)$('#overlay').scrollTop=0;
+  $('main').inert=true;$('header.top').inert=true;
+  modal.focus({preventScroll:true});
+}
+function fecharModal(){
+  $('#overlay').classList.remove('aberto');$('#modal').innerHTML='';document.body.classList.remove('modal-aberto');
+  $('main').inert=false;$('header.top').inert=false;
+  if(focoAntesModal?.isConnected)focoAntesModal.focus({preventScroll:true});
+}
+$('#overlay').addEventListener('click',e=>{if(e.target.id==='overlay')fecharModal();});
+document.addEventListener('keydown',e=>{
+  if(!$('#overlay').classList.contains('aberto'))return;
+  if(e.key==='Escape'){e.preventDefault();fecharModal();}
+  if(e.key==='Tab'){
+    const campos=Array.from($('#modal').querySelectorAll('button,input,select,textarea,a[href],summary,[tabindex="0"]')).filter(el=>!el.disabled&&el.getClientRects().length);
+    const primeiro=campos[0],ultimo=campos[campos.length-1];
+    if(e.shiftKey&&(document.activeElement===primeiro||document.activeElement===$('#modal'))){e.preventDefault();ultimo?.focus();}
+    else if(!e.shiftKey&&document.activeElement===ultimo){e.preventDefault();primeiro?.focus();}
+  }
+});
+
+/* ================= dashboard ================= */
+function renderDashboard(){
+  const abertos=db.orcamentos.filter(o=>o.status==='aberto');
+  const ativos=db.pedidos.filter(p=>['pendente','em_producao','pronto'].includes(p.status));
+  const hoje=hojeISO(),limite=new Date();limite.setDate(limite.getDate()+7);
+  const limiteISO=limite.getFullYear()+'-'+pad2(limite.getMonth()+1)+'-'+pad2(limite.getDate());
+  const entregas=ativos.filter(p=>p.prazo&&p.prazo>=hoje&&p.prazo<=limiteISO);
+  const alertas=materiaisEmAlerta();
+  const soma=a=>a.reduce((s,x)=>s+(x.total||0),0);
+  $('#view-dashboard').innerHTML=`
+    <div class="barra inicio"><h2>Meu ateliê</h2><div class="spacer"></div>
+      <button class="btn" onclick="abrirFormDoc('orcamento')">+ Novo orçamento</button>
+      <button class="btn sec" onclick="abrirFormDoc('pedido')">+ Novo pedido</button>
+    </div>
+    <div class="cards">
+      <div class="card" style="border-left-color:var(--blue)"><div class="rotulo">Pedidos em andamento</div><div class="valor">${ativos.length}</div><div class="sub">${fmtBRL(soma(ativos))}</div></div>
+      <div class="card"><div class="rotulo">Aguardando aprovação</div><div class="valor">${abertos.length}</div><div class="sub">${fmtBRL(soma(abertos))}</div></div>
+      <div class="card" style="border-left-color:var(--teal)"><div class="rotulo">Próximas entregas</div><div class="valor">${entregas.length}</div><div class="sub">Até ${fmtData(limiteISO).slice(0,5)}</div></div>
+      <div class="card" style="border-left-color:${alertas.length?'var(--amber)':'var(--green)'}"><div class="rotulo">Materiais para repor</div><div class="valor">${alertas.length}</div><div class="sub">${alertas.length?'Alerta de estoque':'Estoque em dia'}</div></div>
+    </div>
+    <div class="duas-col">
+      <div class="painel"><div class="painel-titulo"><h3>Fila de produção</h3><button class="link-acao" onclick="showView('pedidos')">Ver pedidos →</button></div>${listaResumoPed()}</div>
+      <div class="painel"><div class="painel-titulo"><h3>Orçamentos em aberto</h3><button class="link-acao" onclick="showView('orcamentos')">Ver todos →</button></div>${listaResumoOrc()}</div>
+    </div>
+    ${alertas.length?`<div class="painel"><div class="painel-titulo"><h3>Reposição de materiais</h3><button class="link-acao" onclick="showView('materiais')">Ver estoque →</button></div>${listaAlertas(alertas)}</div>`:''}`;
+}
+function listaAlertas(alertas){
+  if(!alertas.length)return '<p class="muted">Estoque em dia ✓ — nenhum material abaixo do mínimo.</p>';
+  return '<table class="grid"><thead><tr><th>Material</th><th>Status</th><th class="num">Estoque</th><th class="num">Mínimo</th><th></th></tr></thead><tbody>'+alertas.map(m=>{
+    const[stClass,stLabel]=statusEstoque(m);
+    return `<tr><td><button class="btn mini sec" onclick="abrirLotes('${m.id}')">${esc(m.nome)}</button></td>
+    <td><span class="badge b-${stClass}">${stLabel}</span></td>
+    <td class="num"><strong class="${(m.estoqueAtual||0)<0?'neg':''}">${fmtQtd(m.estoqueAtual||0)}</strong> ${esc(m.unidade)}</td>
+    <td class="num">${fmtQtd(m.estoqueMinimo||0)}</td>
+    <td class="num"><button class="btn mini sec" onclick="abrirCompra('${m.id}')">+ Compra</button></td></tr>`;
+  }).join('')+'</tbody></table>';
+}
+function listaResumoOrc(){
+  const itens=db.orcamentos.filter(o=>o.status==='aberto').sort((a,b)=>(b.criadoEm||'').localeCompare(a.criadoEm||'')).slice(0,6);
+  if(!itens.length)return '<div class="vazio"><strong>Nenhum orçamento aguardando aprovação</strong>Os novos orçamentos aparecem aqui.</div>';
+  return '<div class="lista-trabalhos">'+itens.map(o=>`<button class="trabalho" onclick="verDoc('orcamento','${o.id}')"><span class="trabalho-info"><span class="trabalho-nome">${esc(o.titulo||o.numero)}</span><span class="muted">${esc(o.cliente||'Cliente não informado')} · ${esc(o.numero)}</span></span><span class="trabalho-fim"><strong>${fmtBRL(o.total)}</strong><span class="muted">${fmtData(o.data)}</span></span></button>`).join('')+'</div>';
+}
+function listaResumoPed(){
+  const itens=db.pedidos.filter(p=>p.status!=='entregue'&&p.status!=='cancelado').sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999')).slice(0,6);
+  if(!itens.length)return '<div class="vazio"><strong>Nenhum pedido em andamento</strong>Sua fila de produção está livre.</div>';
+  return '<div class="lista-trabalhos">'+itens.map(p=>`<button class="trabalho" onclick="verDoc('pedido','${p.id}')"><span class="trabalho-info"><span class="trabalho-nome">${esc(p.titulo||p.numero)}</span><span class="muted">${esc(p.cliente||'Cliente não informado')} · ${esc(p.numero)}</span><span class="${p.prazo&&p.prazo<hojeISO()?'neg':'muted'}">${p.prazo?(p.prazo<hojeISO()?'Atrasado · ':p.prazo===hojeISO()?'Entrega hoje · ':'Entrega · ')+fmtData(p.prazo):'Sem prazo definido'}</span></span><span class="trabalho-fim"><span class="badge b-${p.status}">${STATUS_PED[p.status]}</span><strong>${fmtBRL(p.total)}</strong></span></button>`).join('')+'</div>';
+}
+
+/* ================= estoque / materiais ================= */
+let filtroMat='';
+function renderMateriais(){
+  const f=filtroMat.toLowerCase();
+  const lista=db.materiais.filter(m=>!f||m.nome.toLowerCase().includes(f)||(m.fornecedor||'').toLowerCase().includes(f));
+  const nAlertas=materiaisEmAlerta().length;
+  $('#view-materiais').innerHTML=`
+    <div class="barra"><h2>Estoque</h2>
+      <input class="busca" id="buscaMat" placeholder="Buscar material ou fornecedor..." value="${esc(filtroMat)}">
+      <div class="spacer"></div><button class="btn" onclick="abrirFormMaterial()">+ Novo material</button>
+    </div>
+    ${nAlertas?`<p class="muted">${nAlertas} ${nAlertas===1?'material precisa':'materiais precisam'} de reposição.</p>`:''}
+    <table class="grid"><thead><tr><th>Material</th><th class="num">Estoque disponível</th><th class="num">Custo por unidade</th><th class="secundaria">Fornecedor</th><th class="num secundaria">Valor em estoque</th><th></th></tr></thead>
+    <tbody>${lista.map(m=>{
+      const ctrl=m.controlaEstoque!==false;
+      const[stClass,stLabel]=statusEstoque(m);
+      const est=m.estoqueAtual||0;
+      return `<tr>
+      <td><button class="btn mini sec" onclick="abrirLotes('${m.id}')">${esc(m.nome)}</button><div><span class="badge b-${stClass}">${stLabel}</span></div></td>
+      <td class="num">${ctrl?`<strong class="${est<0?'neg':''}">${fmtQtd(est)}</strong> <span class="muted">${esc(m.unidade)}</span>`:'<span class="muted">—</span>'}</td>
+      <td class="num">${fmtBRL(custoUnit(m))}</td>
+      <td class="muted">${esc(m.fornecedor||'')}</td>
+      <td class="num">${ctrl?`<span class="${valorEmEstoque(m)<0?'neg':''}">${fmtBRL(valorEmEstoque(m))}</span>`:'<span class="muted">—</span>'}</td>
+      <td class="num">${ctrl?`<button class="btn mini sec" onclick="abrirCompra('${m.id}')">+ Compra</button>
+      <button class="btn mini neutro" onclick="abrirAjuste('${m.id}')">Ajustar</button>`:''}
+      <button class="btn mini neutro" onclick="abrirFormMaterial('${m.id}')">Editar</button>
+      <button class="btn mini perigo" onclick="excluirMaterial('${m.id}')">✕</button></td></tr>`;}).join('')||'<tr><td colspan="6" class="muted">Nenhum material encontrado.</td></tr>'}</tbody></table>
+    <p class="contagem">${lista.length} de ${db.materiais.length} materiais</p>`;
+  const b=$('#buscaMat');b.addEventListener('input',()=>{filtroMat=b.value;render();const nb=$('#buscaMat');nb.focus();nb.setSelectionRange(nb.value.length,nb.value.length);});
+}
+function abrirFormMaterial(id){
+  const m=id?materialById(id):{nome:'',fornecedor:'',unidade:'Folhas',controlaEstoque:true,custoUnitario:0,estoqueMinimo:0};
+  abrirModal(`<h3>${id?'Editar':'Novo'} material</h3>
+  <form onsubmit="return salvarMaterial(event,'${id||''}')">
+    <div class="formgrid">
+      <div class="campo largo"><label>Nome do material</label><input name="nome" required value="${esc(m.nome)}"></div>
+      <div class="campo largo"><label>Fornecedor padrão</label><input name="fornecedor" value="${esc(m.fornecedor||'')}"></div>
+      <div class="campo"><label>Unidade</label><select name="unidade">
+        ${['Folhas','Unidades','Metros(m)','Centímetros(cm)','Gramas(g)'].map(u=>`<option value="${u}" ${u===m.unidade?'selected':''}>${u}</option>`).join('')}
+        ${['Folhas','Unidades','Metros(m)','Centímetros(cm)','Gramas(g)'].includes(m.unidade)?'':`<option value="${esc(m.unidade)}" selected>${esc(m.unidade)}</option>`}
+      </select></div>
+      <div class="campo"><label>Estoque mínimo</label><input name="estoqueMinimo" inputmode="decimal" value="${m.estoqueMinimo||0}"><small>Alerta de reposição ao atingir esta quantidade.</small></div>
+      <div class="campo"><label>Custo de referência (R$ / unidade)</label><input name="custoUnitario" inputmode="decimal" value="${m.custoUnitario||0}"><small>Usado quando não há compras disponíveis.</small></div>
+      <div class="campo largo"><label style="flex-direction:row;display:flex;align-items:center;gap:8px"><input type="checkbox" name="controlaEstoque" ${m.controlaEstoque!==false?'checked':''} style="width:auto"> Controlar estoque deste material</label></div>
+    </div>
+    <p class="muted">Para serviços como impressão, desative o controle de estoque e informe o custo de referência.</p>
+    <div class="acoes"><button class="btn" type="submit">Salvar</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+  </form>`);
+}
+function salvarMaterial(ev,id){
+  ev.preventDefault();const f=ev.target;
+  const dados={nome:f.nome.value.trim(),fornecedor:f.fornecedor.value.trim(),unidade:f.unidade.value.trim()||'Unidades',
+    estoqueMinimo:parseNum(f.estoqueMinimo.value),custoUnitario:parseNum(f.custoUnitario.value),
+    controlaEstoque:!!f.controlaEstoque.checked};
+  if(id){Object.assign(materialById(id),dados);}
+  else{db.materiais.push(Object.assign({id:uid('m'),estoqueAtual:0},dados));}
+  saveDB();fecharModal();render();toast('Material salvo.');return false;
+}
+function excluirMaterial(id){
+  const usado=db.produtos.filter(p=>(p.itens||[]).some(i=>i.materialId===id));
+  if(usado.length){alert('Este material é usado nos produtos: '+usado.map(p=>p.nome).join(', ')+'.\nRemova-o dos produtos antes de excluir.');return;}
+  if(!confirm('Excluir este material e seus lotes?'))return;
+  db.materiais=db.materiais.filter(m=>m.id!==id);
+  db.lotes=db.lotes.filter(l=>l.materialId!==id);
+  saveDB();render();toast('Material excluído.');
+}
+/* --- compras (lotes) --- */
+function abrirCompra(id){
+  const m=materialById(id);if(!m)return;
+  abrirModal(`<h3>Nova compra — ${esc(m.nome)}</h3>
+  <form onsubmit="return salvarCompra(event,'${id}')">
+    <div class="formgrid">
+      <div class="campo"><label>Data</label><input name="data" type="date" value="${hojeISO()}"></div>
+      <div class="campo"><label>Quantidade (${esc(m.unidade)})</label><input name="quantidade" inputmode="decimal" required placeholder="ex.: 100"></div>
+      <div class="campo"><label>Valor dos materiais (R$)</label><input name="preco" inputmode="decimal" value="0"><small>Total desta compra, sem frete.</small></div>
+      <div class="campo"><label>Frete da compra (R$)</label><input name="frete" inputmode="decimal" value="0"></div>
+      <div class="campo"><label>Dividir o frete entre</label><input name="numItens" inputmode="numeric" value="1"><small>Tipos de material na mesma compra. Use 1 se não dividir.</small></div>
+      <div class="campo"><label>Fornecedor</label><input name="fornecedor" value="${esc(m.fornecedor||'')}"></div>
+      <div class="campo largo"><label>Observações</label><input name="obs" placeholder="ex.: promoção, nº da nota..."></div>
+    </div>
+    <p class="muted">Disponível hoje: <strong>${fmtQtd(m.estoqueAtual||0)} ${esc(m.unidade)}</strong></p>
+    <div class="acoes"><button class="btn" type="submit">Registrar compra</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+  </form>`);
+}
+function salvarCompra(ev,id){
+  ev.preventDefault();const f=ev.target;const m=materialById(id);
+  const qtd=parseNum(f.quantidade.value);
+  if(qtd<=0){alert('Informe a quantidade.');return false;}
+  const preco=parseNum(f.preco.value),frete=parseNum(f.frete.value),nI=Math.max(1,Math.round(parseNum(f.numItens.value))||1);
+  const vu=Math.round(((preco+frete/nI)/qtd)*1000000)/1000000;
+  db.lotes.push({id:uid('l'),materialId:id,data:f.data.value||hojeISO(),quantidade:qtd,qtdRestante:qtd,
+    preco,frete,numItens:nI,valorUnitario:vu,fornecedor:f.fornecedor.value.trim(),obs:f.obs.value.trim(),
+    criadoEm:new Date().toISOString()});
+  m.estoqueAtual=Math.round(((m.estoqueAtual||0)+qtd)*10000)/10000;
+  const forn=f.fornecedor.value.trim();if(forn)m.fornecedor=forn;
+  saveDB();fecharModal();render();
+  toast(`Compra registrada: +${fmtQtd(qtd)} ${m.unidade} (${fmtBRL(vu)}/un).`);return false;
+}
+function abrirAjuste(id){
+  const m=materialById(id);if(!m)return;
+  abrirModal(`<h3>Ajuste de estoque — ${esc(m.nome)}</h3>
+  <form onsubmit="return salvarAjuste(event,'${id}')">
+    <div class="formgrid">
+      <div class="campo"><label>Estoque atual contado (${esc(m.unidade)})</label><input name="novoEstoque" inputmode="decimal" value="${m.estoqueAtual||0}"></div>
+      <div class="campo largo"><label>Motivo</label><input name="motivo" placeholder="ex.: contagem física, perda, doação..."></div>
+    </div>
+    <p class="muted">Corrige a quantidade contada, sem alterar os custos das compras. Para adicionar uma compra, use <strong>Registrar compra</strong>.</p>
+    <div class="acoes"><button class="btn" type="submit">Salvar ajuste</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+  </form>`);
+}
+function salvarAjuste(ev,id){
+  ev.preventDefault();const f=ev.target;const m=materialById(id);
+  m.estoqueAtual=Math.round(parseNum(f.novoEstoque.value)*10000)/10000;
+  saveDB();fecharModal();render();toast('Estoque ajustado para '+fmtQtd(m.estoqueAtual)+' '+m.unidade+'.');return false;
+}
+/* --- histórico de lotes --- */
+function abrirLotes(id){
+  const m=materialById(id);if(!m)return;
+  const lotes=db.lotes.filter(l=>l.materialId===id).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const linhas=lotes.length?lotes.map(l=>{
+    const totalPago=(l.preco||0)+(l.frete||0)/(l.numItens||1);
+    return `<tr>
+      <td>${fmtData(l.data)}</td>
+      <td class="num">${fmtQtd(l.quantidade)}</td>
+      <td class="num"><strong>${fmtQtd(l.qtdRestante)}</strong></td>
+      <td class="num">${fmtBRL(totalPago)}</td>
+      <td class="num">${fmtBRL(l.valorUnitario)}</td>
+      <td class="muted">${esc(l.fornecedor||'')}</td>
+      <td class="muted">${esc(l.obs||'')}</td>
+      <td class="num">${l.qtdRestante>=l.quantidade-0.00001?`<button class="btn mini perigo" onclick="excluirLote('${l.id}','${id}')">✕</button>`:''}</td></tr>`;
+  }).join(''):'<tr><td colspan="8" class="muted">Nenhum lote registrado.</td></tr>';
+  const ctrl=m.controlaEstoque!==false;
+  abrirModal(`<h3>Histórico de compras · ${esc(m.nome)}</h3>
+    <p>${ctrl?`Estoque atual: <strong>${fmtQtd(m.estoqueAtual||0)} ${esc(m.unidade)}</strong> · Custo médio: <strong>${fmtBRL(custoUnit(m))}</strong>`:'Material sem controle de estoque.'}</p>
+    <details><summary>Dados do material</summary>
+      <div class="resumo-linha"><span>Fornecedor padrão</span><span>${esc(m.fornecedor||'Não informado')}</span></div>
+      <div class="resumo-linha"><span>Estoque mínimo</span><span>${fmtQtd(m.estoqueMinimo||0)} ${esc(m.unidade)}</span></div>
+      ${ctrl?`<div class="resumo-linha"><span>Valor em estoque</span><span>${fmtBRL(valorEmEstoque(m))}</span></div>`:''}
+    </details>
+    <table class="grid"><thead><tr><th>Data</th><th class="num">Quantidade comprada</th><th class="num">Disponível</th><th class="num">Total com frete</th><th class="num">Custo por unidade</th><th>Fornecedor</th><th>Observações</th><th></th></tr></thead>
+    <tbody>${linhas}</tbody></table>
+    <div class="acoes">${ctrl?`<button class="btn" onclick="fecharModal();abrirCompra('${id}')">+ Nova compra</button>`:''}<button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
+}
+function excluirLote(loteId,materialId){
+  const l=db.lotes.find(x=>x.id===loteId);if(!l)return;
+  if(l.qtdRestante<l.quantidade-0.00001){alert('Este lote já foi consumido e não pode ser excluído.');return;}
+  if(!confirm('Excluir este lote? A quantidade será removida do estoque.'))return;
+  const m=materialById(materialId);
+  if(m)m.estoqueAtual=Math.round(((m.estoqueAtual||0)-l.qtdRestante)*10000)/10000;
+  db.lotes=db.lotes.filter(x=>x.id!==loteId);
+  saveDB();abrirLotes(materialId);render();toast('Lote excluído.');
+}
+
+/* ================= produtos ================= */
+let filtroProd='';
+function renderProdutos(){
+  const f=filtroProd.toLowerCase();
+  const lista=db.produtos.filter(p=>!f||p.nome.toLowerCase().includes(f)||(p.obs||'').toLowerCase().includes(f));
+  $('#view-produtos').innerHTML=`
+    <div class="barra"><h2>Produtos</h2>
+      <input class="busca" id="buscaProd" placeholder="Buscar produto..." value="${esc(filtroProd)}">
+      <div class="spacer"></div><button class="btn" onclick="abrirFormProduto()">+ Novo produto</button>
+    </div>
+    <table class="grid"><thead><tr><th>Produto</th><th class="num">Custo por unidade</th><th class="num">Lucro por unidade</th><th class="num">Preço de venda</th><th></th></tr></thead>
+    <tbody>${lista.map(p=>{const c=custoProduto(p);return `<tr>
+      <td><button class="btn mini sec" onclick="fichaProduto('${p.id}')">${esc(p.nome)}</button></td>
+      <td class="num">${fmtBRL(c.total)}</td>
+      <td class="num">${fmtBRL(lucroProduto(p))}</td>
+      <td class="num"><strong>${fmtBRL(precoFinal(p))}</strong>${p.precoFinalManual!=null?' <span class="muted" title="Preço manual">✎</span>':''}</td>
+      <td class="num"><button class="btn mini neutro" onclick="abrirFormProduto('${p.id}')">Editar</button>
+      <button class="btn mini perigo" onclick="excluirProduto('${p.id}')">✕</button></td></tr>`;}).join('')||'<tr><td colspan="5" class="muted">Nenhum produto encontrado.</td></tr>'}</tbody></table>
+    <p class="contagem">${lista.length} de ${db.produtos.length} produtos</p>`;
+  const b=$('#buscaProd');b.addEventListener('input',()=>{filtroProd=b.value;render();const nb=$('#buscaProd');nb.focus();nb.setSelectionRange(nb.value.length,nb.value.length);});
+}
+function fichaProduto(id){
+  const p=produtoById(id);if(!p)return;
+  const c=custoProduto(p);
+  const linhas=c.detalhe.length?c.detalhe.map(d=>`<tr><td>${esc(d.nome)}</td><td class="num">${d.qtd} ${esc(d.un)}</td><td class="num">${fmtBRL(d.vu)}</td><td class="num">${fmtBRL(d.vt)}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">Nenhum material vinculado a este produto.</td></tr>';
+  const prod=producivel(p);
+  abrirModal(`<h3>${esc(p.nome)}</h3>
+    ${p.obs?`<p class="muted">${esc(p.obs)}</p>`:''}
+    ${prod!=null?`<p class="${prod<=0?'neg':'muted'}">📦 Com o estoque atual dá para produzir <strong>${prod} un</strong></p>`:''}
+    <table class="grid"><thead><tr><th>Material</th><th class="num">Quantidade</th><th class="num">Custo por unidade</th><th class="num">Custo</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div style="margin-top:12px">
+      <div class="resumo-linha"><span>Materiais</span><span>${fmtBRL(c.materiais)}</span></div>
+      <div class="resumo-linha"><span>Tempo de trabalho · ${p.tempoMin||0} min</span><span>${fmtBRL(c.maoDeObra)}</span></div>
+      <div class="resumo-linha"><span>Despesas do ateliê</span><span>${fmtBRL(c.custoFixo)}</span></div>
+      <div class="resumo-linha total"><span>Custo total</span><span>${fmtBRL(c.total)}</span></div>
+      <div class="resumo-linha"><span>Lucro por unidade</span><span>${fmtBRL(lucroProduto(p))}</span></div>
+      <div class="resumo-linha total"><span>Preço de venda${p.precoFinalManual!=null?' (definido por você)':''}</span><span>${fmtBRL(precoFinal(p))}</span></div>
+    </div>
+    <div class="acoes"><button class="btn sec" onclick="fecharModal();abrirFormProduto('${p.id}')">Editar produto</button><button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
+}
+let formProd=null;
+function abrirFormProduto(id){
+  const p=id?produtoById(id):{nome:'',obs:'',tempoMin:0,lucroPct:50,itens:[],precoFinalManual:null};
+  formProd={id:id||null,nome:p.nome,obs:p.obs,tempoMin:p.tempoMin,lucroPct:p.lucroPct,precoFinalManual:p.precoFinalManual,itens:(p.itens||[]).map(i=>({materialId:i.materialId,qtd:i.qtd}))};
+  desenharFormProduto();
+}
+function desenharFormProduto(){
+  const fp=formProd;
+  const pfInp=$('#modal [name=precoFinalManual]');
+  if(pfInp)fp.precoFinalManual=pfInp.value.trim()?parseNum(pfInp.value):null;
+  const matOptions=db.materiais.map(m=>({id:m.id,rotulo:m.nome,extra:fmtBRL(custoUnit(m))+'/'+m.unidade}));
+  const linhas=fp.itens.map((it,idx)=>{
+    const m=it.materialId?materialById(it.materialId):null;
+    return `<tr>
+    <td><button type="button" class="btn mini sec" onclick="abrirBuscaMaterial(${idx})" title="Trocar material">${m?esc(m.nome):'— escolher material —'}</button></td>
+    <td style="width:110px"><input data-idx="${idx}" class="inpQtd" inputmode="decimal" value="${it.qtd}" style="width:90px">${m?`<small class="muted">${esc(m.unidade)}</small>`:''}</td>
+    <td class="num">${m?fmtBRL(custoUnit(m)*it.qtd):'—'}</td>
+    <td style="width:40px"><button type="button" class="btn mini perigo" onclick="remItemReceita(${idx})">✕</button></td></tr>`;}).join('');
+  abrirModal(`<h3>${fp.id?'Editar':'Novo'} produto</h3>
+  <form onsubmit="return salvarProduto(event)">
+    <div class="formgrid">
+      <div class="campo largo"><label>Nome do produto</label><input name="nome" required value="${esc(fp.nome)}" oninput="formProd.nome=this.value"></div>
+      <div class="campo largo"><label>Observações</label><input name="obs" value="${esc(fp.obs)}" oninput="formProd.obs=this.value"></div>
+      <div class="campo"><label>Tempo por unidade (min)</label><input name="tempoMin" inputmode="numeric" value="${fp.tempoMin}" oninput="formProd.tempoMin=parseNum(this.value);previewProduto()"></div>
+      <div class="campo"><label>Lucro sobre o custo (%)</label><input name="lucroPct" inputmode="decimal" value="${fp.lucroPct}" oninput="formProd.lucroPct=parseNum(this.value);previewProduto()"></div>
+      <div class="campo largo"><label>Preço de venda (opcional)</label><input name="precoFinalManual" inputmode="decimal" placeholder="Usar preço calculado" value="${fp.precoFinalManual==null?'':fp.precoFinalManual}"><small>Em branco, usa o preço calculado.</small></div>
+    </div>
+    <h4 style="margin:8px 0 14px">Materiais para produzir 1 unidade</h4>
+    <table class="grid"><thead><tr><th>Material</th><th>Quantidade</th><th class="num">Custo</th><th></th></tr></thead><tbody id="tbReceita">${linhas||'<tr><td colspan="4" class="muted">Adicione os materiais usados neste produto.</td></tr>'}</tbody></table>
+    <div class="acoes" style="margin-top:8px"><button type="button" class="btn mini neutro" onclick="addItemReceita()">+ Adicionar material</button></div>
+    <div class="painel" id="previewProd" style="margin-top:12px"></div>
+    <div class="acoes"><button class="btn" type="submit">Salvar</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+  </form>`);
+  $$('.inpQtd').forEach(inp=>inp.addEventListener('input',()=>{
+    const item=fp.itens[+inp.dataset.idx];item.qtd=parseNum(inp.value);
+    const material=materialById(item.materialId);
+    inp.closest('tr').cells[2].textContent=material?fmtBRL(custoUnit(material)*item.qtd):'—';
+    previewProduto();
+  }));
+  previewProduto();
+}
+/* busca de material para a linha idx da receita (mesma UI de sugestões) */
+function abrirBuscaMaterial(idx){
+  const matOptions=db.materiais.map(m=>({id:m.id,rotulo:m.nome,extra:fmtBRL(custoUnit(m))+'/'+m.unidade}));
+  const fpItens=formProd.itens;
+  abrirModal(`<h3>Escolher material — item ${idx+1}</h3>
+    <div class="sug-wrap" id="wrapBuscaMat"></div>
+    <div class="acoes"><button class="btn neutro" type="button" onclick="desenharFormProduto()">Voltar</button></div>`);
+  montaSugestoes('#wrapBuscaMat',matOptions,m=>{
+    fpItens[idx].materialId=m.id;
+    desenharFormProduto();
+  });
+  const inp=$('#wrapBuscaMat .sug-input');if(inp)inp.focus();
+}
+function addItemReceita(){formProd.itens.push({materialId:'',qtd:1});desenharFormProduto();}
+function remItemReceita(idx){formProd.itens.splice(idx,1);desenharFormProduto();}
+function previewProduto(){
+  const el=$('#previewProd');if(!el)return;
+  const c=custoProduto(formProd);
+  const sug=c.total*(1+(formProd.lucroPct||0)/100);
+  el.innerHTML=`<div class="resumo-linha"><span>Materiais</span><span>${fmtBRL(c.materiais)}</span></div>
+  <div class="resumo-linha"><span>Trabalho e despesas · ${formProd.tempoMin||0} min</span><span>${fmtBRL(c.maoDeObra+c.custoFixo)}</span></div>
+  <div class="resumo-linha total"><span>Custo total</span><span>${fmtBRL(c.total)}</span></div>
+  <div class="resumo-linha"><span>Preço de venda calculado</span><span><strong>${fmtBRL(sug)}</strong></span></div>`;
+}
+function salvarProduto(ev){
+  ev.preventDefault();const f=ev.target;
+  const itens=formProd.itens.filter(i=>i.materialId&&i.qtd>0);
+  const pfTxt=f.precoFinalManual.value.trim();
+  const dados={nome:f.nome.value.trim(),obs:f.obs.value.trim(),tempoMin:parseNum(f.tempoMin.value),lucroPct:parseNum(f.lucroPct.value),itens,precoFinalManual:pfTxt?parseNum(pfTxt):null};
+  if(formProd.id){Object.assign(produtoById(formProd.id),dados);}else{db.produtos.push(Object.assign({id:uid('p')},dados));}
+  saveDB();fecharModal();render();toast('Produto salvo.');return false;
+}
+function excluirProduto(id){
+  if(!confirm('Excluir este produto? Orçamentos já salvos não serão afetados.'))return;
+  db.produtos=db.produtos.filter(p=>p.id!==id);saveDB();render();toast('Produto excluído.');
+}
+
+/* ================= orçamentos e pedidos ================= */
+let filtroOrc='todos',filtroPed='ativos';
+function renderOrcamentos(){
+  const lista=db.orcamentos.filter(o=>filtroOrc==='todos'||o.status===filtroOrc).sort((a,b)=>(b.criadoEm||'').localeCompare(a.criadoEm||''));
+  $('#view-orcamentos').innerHTML=`
+    <div class="barra"><h2>Orçamentos</h2>
+      <select id="selFiltroOrc">${['todos','aberto','aprovado','perdido'].map(s=>`<option value="${s}" ${s===filtroOrc?'selected':''}>${s==='todos'?'Todos':STATUS_ORC[s]}</option>`).join('')}</select>
+      <div class="spacer"></div><button class="btn" onclick="abrirFormDoc('orcamento')">+ Novo orçamento</button>
+    </div>
+    <table class="grid"><thead><tr><th>Trabalho</th><th>Cliente</th><th>Data</th><th>Status</th><th class="num">Total</th><th></th></tr></thead>
+    <tbody>${lista.length?lista.map(o=>`<tr>
+      <td><button class="btn mini sec" onclick="verDoc('orcamento','${o.id}')">${esc(o.titulo||o.numero)}</button><div class="muted">${esc(o.numero)}</div></td>
+      <td>${esc(o.cliente||'—')}</td><td>${fmtData(o.data)}</td>
+      <td><span class="badge b-${o.status}">${STATUS_ORC[o.status]}</span></td>
+      <td class="num"><strong>${fmtBRL(o.total)}</strong></td>
+      <td class="num"><button class="btn mini neutro" onclick="verDoc('orcamento','${o.id}')">Ver orçamento</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">Nenhum orçamento nesta seleção.</td></tr>'}</tbody></table>`;
+  $('#selFiltroOrc').setAttribute('aria-label','Filtrar orçamentos por situação');
+  $('#selFiltroOrc').addEventListener('change',e=>{filtroOrc=e.target.value;render();});
+}
+function renderPedidos(){
+  const lista=db.pedidos.filter(p=>{
+    if(filtroPed==='ativos')return p.status!=='entregue'&&p.status!=='cancelado';
+    if(filtroPed==='todos')return true;
+    return p.status===filtroPed;
+  }).sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999')||(b.criadoEm||'').localeCompare(a.criadoEm||''));
+  $('#view-pedidos').innerHTML=`
+    <div class="barra"><h2>Pedidos</h2>
+      <select id="selFiltroPed">${[['ativos','Em andamento'],['todos','Todos os pedidos'],['pendente','A produzir'],['em_producao','Em produção'],['pronto','Prontos para entrega'],['entregue','Entregues'],['cancelado','Cancelados']].map(([v,l])=>`<option value="${v}" ${v===filtroPed?'selected':''}>${l}</option>`).join('')}</select>
+      <div class="spacer"></div><button class="btn" onclick="abrirFormDoc('pedido')">+ Novo pedido</button>
+    </div>
+    <table class="grid"><thead><tr><th>Trabalho</th><th>Cliente</th><th>Entrega</th><th>Status</th><th class="num">Total</th><th></th></tr></thead>
+    <tbody>${lista.length?lista.map(p=>`<tr>
+      <td><button class="btn mini sec" onclick="verDoc('pedido','${p.id}')">${esc(p.titulo||p.numero)}</button><div class="muted">${esc(p.numero)}</div></td>
+      <td>${esc(p.cliente||'—')}</td><td class="${p.prazo&&p.prazo<hojeISO()&&PROXIMO_PED[p.status]?'neg':''}">${p.prazo?fmtData(p.prazo):'<span class="muted">Sem prazo</span>'}</td>
+      <td><span class="badge b-${p.status}">${STATUS_PED[p.status]}</span></td>
+      <td class="num"><strong>${fmtBRL(p.total)}</strong></td>
+      <td class="num">${PROXIMO_PED[p.status]?`<button class="btn mini sec" onclick="avancarPedido('${p.id}')">→ ${STATUS_PED[PROXIMO_PED[p.status]]}</button>`:''}
+      <button class="btn mini neutro" onclick="verDoc('pedido','${p.id}')">Ver pedido</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">Nenhum pedido nesta seleção.</td></tr>'}</tbody></table>`;
+  $('#selFiltroPed').setAttribute('aria-label','Filtrar pedidos por situação');
+  $('#selFiltroPed').addEventListener('change',e=>{filtroPed=e.target.value;render();});
+}
+
+/* --- editor de orçamento/pedido --- */
+let formDoc=null;
+function abrirFormDoc(tipo,id){
+  let d;
+  if(id){
+    const orig=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);
+    d=JSON.parse(JSON.stringify(orig));
+  }else{
+    d={id:null,numero:null,titulo:'',data:hojeISO(),cliente:'',obs:'',prazo:'',itens:[],status:tipo==='orcamento'?'aberto':'pendente'};
+  }
+  formDoc={tipo,d};
+  desenharFormDoc();
+}
+function totalDoc(d){return d.itens.reduce((s,i)=>s+(i.qtd*i.precoUnit),0);}
+function capturaCabecalhoDoc(){
+  const d=formDoc.d;
+  const tit=$('#modal [name=titulo]'),cli=$('#modal [name=cliente]'),dat=$('#modal [name=data]'),obs=$('#modal [name=obs]'),prz=$('#modal [name=prazo]');
+  if(tit)d.titulo=tit.value;if(cli)d.cliente=cli.value;if(dat)d.data=dat.value;if(obs)d.obs=obs.value;if(prz)d.prazo=prz.value;
+}
+function desenharFormDoc(){
+  const {tipo,d}=formDoc;
+  capturaCabecalhoDoc();
+  const titulo=tipo==='orcamento'?'orçamento':'pedido';
+  const prodOptions=db.produtos.map(p=>({id:p.id,rotulo:p.nome,extra:fmtBRL(precoFinal(p))}));
+  const travado=tipo==='pedido'&&d.estoqueBaixado;
+  const linhas=d.itens.map((it,idx)=>`<tr>
+    <td>${esc(it.nome)}</td>
+    <td style="width:90px"><input inputmode="decimal" value="${it.qtd}" data-idx="${idx}" class="docQtd" style="width:70px" ${travado?'disabled':''}></td>
+    <td style="width:120px"><input inputmode="decimal" value="${(Math.round(it.precoUnit*100)/100).toFixed(2).replace('.',',')}" data-idx="${idx}" class="docPreco" style="width:105px" ${travado?'disabled':''}></td>
+    <td class="num" id="subDoc${idx}">${fmtBRL(it.qtd*it.precoUnit)}</td>
+    <td style="width:40px">${travado?'':`<button type="button" class="btn mini perigo" onclick="remItemDoc(${idx})">✕</button>`}</td></tr>`).join('');
+  abrirModal(`<h3>${d.id?'Editar':'Novo'} ${titulo}${d.numero?' — '+esc(d.numero):''}</h3>
+  <form onsubmit="return salvarDoc(event)">
+    <div class="formgrid">
+      <div class="campo largo"><label>Descrição do trabalho</label><input name="titulo" value="${esc(d.titulo||'')}" placeholder="Ex.: Kit festa · tema jardim · Maria" required></div>
+      <div class="campo"><label>Cliente</label><input name="cliente" value="${esc(d.cliente||'')}" placeholder="Nome do cliente"></div>
+      <div class="campo"><label>Data</label><input name="data" type="date" value="${d.data||hojeISO()}"></div>
+      ${tipo==='pedido'?`<div class="campo"><label>Prazo de entrega</label><input name="prazo" type="date" value="${d.prazo||''}"></div>`:''}
+      <div class="campo largo"><label>Detalhes da personalização</label><input name="obs" value="${esc(d.obs||'')}" placeholder="Nome, tema, cores e outros combinados"></div>
+    </div>
+    ${travado?'<p class="muted">O material deste pedido já saiu do estoque. Para mudar os itens, cancele este pedido e crie outro.</p>':`<div class="painel" style="background:color-mix(in srgb,var(--accent) 6%,var(--panel))">
+      <div class="formgrid" style="margin-bottom:6px">
+        <div class="campo largo"><label>Produto do catálogo</label>
+          <div class="sug-wrap" id="wrapProdDoc"></div></div>
+        <div class="campo" style="max-width:110px"><label>Quantidade</label><input id="qtdProdDoc" inputmode="decimal" value="1"></div>
+      </div>
+      <details><summary>Adicionar item fora do catálogo</summary>
+        <div class="formgrid" style="margin-bottom:0">
+          <div class="campo largo"><label>Descrição do item</label><input id="nomeAvulso" placeholder="Ex.: Arte personalizada para convite"></div>
+          <div class="campo"><label>Quantidade</label><input id="qtdAvulso" inputmode="decimal" value="1"></div>
+          <div class="campo"><label>Valor por unidade (R$)</label><input id="precoAvulso" inputmode="decimal" placeholder="0,00"></div>
+          <div class="campo largo"><button type="button" class="btn neutro" onclick="addAvulsoDoc()">Adicionar item</button></div>
+        </div>
+      </details>
+    </div>`}
+    <table class="grid"><thead><tr><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th class="num">Subtotal</th><th></th></tr></thead>
+    <tbody id="tbDoc">${linhas||'<tr><td colspan="5" class="muted">Nenhum item ainda.</td></tr>'}</tbody></table>
+    <div class="resumo-linha total"><span>Total</span><span id="totalDoc">${fmtBRL(totalDoc(d))}</span></div>
+    <div class="acoes"><button class="btn" type="submit">Salvar ${titulo}</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+  </form>`);
+  $$('.docQtd').forEach(inp=>inp.addEventListener('input',()=>{const i=+inp.dataset.idx;formDoc.d.itens[i].qtd=parseNum(inp.value);atualizaLinhaDoc(i);}));
+  $$('.docPreco').forEach(inp=>inp.addEventListener('input',()=>{const i=+inp.dataset.idx;formDoc.d.itens[i].precoUnit=parseNum(inp.value);atualizaLinhaDoc(i);}));
+  montaSugestoes('#wrapProdDoc',prodOptions,prod=>addProdPorId(prod.id));
+}
+/* caixa de busca com lista de sugestões própria (navegável por teclado e mouse) */
+function montaSugestoes(wrapSel,options,onPick){
+  const wrap=$(wrapSel);if(!wrap)return;
+  const material=wrapSel==='#wrapBuscaMat';
+  wrap.innerHTML=`<input class="sug-input" aria-label="${material?'Buscar material':'Produto do catálogo'}" placeholder="${material?'Buscar material':'Buscar produto'}" autocomplete="off"><div class="sug-list"></div>`;
+  const input=wrap.querySelector('.sug-input'),lista=wrap.querySelector('.sug-list');
+  let foco=-1,itens=[];
+  function desenhar(){
+    const termo=input.value.trim().toLowerCase();
+    itens=options.filter(o=>!termo||o.rotulo.toLowerCase().includes(termo)).slice(0,50);
+    foco=itens.length?Math.max(0,Math.min(foco,itens.length-1)):-1;
+    lista.innerHTML=itens.length?itens.map((o,i)=>`<button type="button" class="sug-item ${i===foco?'foco':''}" data-idx="${i}">
+      <span>${esc(o.rotulo)}</span>${o.extra?`<span class="preco">${esc(o.extra)}</span>`:''}</button>`).join(''):
+      `<div class="sug-item" style="cursor:default;color:var(--muted)">Nenhum ${material?'material':'produto'} encontrado</div>`;
+    lista.classList.add('aberta');
+  }
+  function pick(i){
+    const o=itens[i];if(!o)return;
+    input.value='';lista.classList.remove('aberta');
+    onPick(o);
+  }
+  input.addEventListener('input',()=>{foco=0;desenhar();});
+  input.addEventListener('focus',desenhar);
+  input.addEventListener('keydown',ev=>{
+    if(!lista.classList.contains('aberta'))desenhar();
+    if(ev.key==='ArrowDown'){ev.preventDefault();foco=Math.min(foco+1,itens.length-1);desenhar();}
+    else if(ev.key==='ArrowUp'){ev.preventDefault();foco=Math.max(foco-1,0);desenhar();}
+    else if(ev.key==='Enter'){ev.preventDefault();if(foco>=0)pick(foco);}
+    else if(ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();lista.classList.remove('aberta');}
+  });
+  lista.addEventListener('mousedown',ev=>{ev.preventDefault();const b=ev.target.closest('.sug-item[data-idx]');if(b)pick(+b.dataset.idx);});
+  input.addEventListener('blur',()=>setTimeout(()=>lista.classList.remove('aberta'),150));
+}
+function atualizaLinhaDoc(i){
+  const it=formDoc.d.itens[i];
+  const sub=$('#subDoc'+i);if(sub)sub.textContent=fmtBRL(it.qtd*it.precoUnit);
+  $('#totalDoc').textContent=fmtBRL(totalDoc(formDoc.d));
+}
+function addProdPorId(prodId){
+  const p=produtoById(prodId);if(!p)return;
+  const qtd=parseNum($('#qtdProdDoc').value)||1;
+  formDoc.d.itens.push({produtoId:p.id,nome:p.nome,qtd,precoUnit:Math.round(precoFinal(p)*100)/100});
+  desenharFormDoc();
+  sugereTituloDoc();
+}
+function addAvulsoDoc(){
+  const nome=$('#nomeAvulso').value.trim();if(!nome){alert('Descreva o item.');return;}
+  const qtd=parseNum($('#qtdAvulso').value)||1,preco=parseNum($('#precoAvulso').value);
+  formDoc.d.itens.push({produtoId:null,nome,qtd,precoUnit:preco});
+  desenharFormDoc();
+  sugereTituloDoc();
+}
+/* preenche o título automaticamente com o primeiro item enquanto estiver vazio */
+function sugereTituloDoc(){
+  const d=formDoc.d,tit=$('#modal [name=titulo]');
+  if(tit&&!tit.value.trim()&&d.itens.length)tit.value=d.itens[0].nome;
+}
+function remItemDoc(idx){formDoc.d.itens.splice(idx,1);desenharFormDoc();}
+function salvarDoc(ev){
+  ev.preventDefault();const f=ev.target;const{tipo,d}=formDoc;
+  d.titulo=f.titulo.value.trim();
+  d.cliente=f.cliente.value.trim();d.data=f.data.value||hojeISO();d.obs=f.obs.value.trim();
+  if(tipo==='pedido'&&f.prazo)d.prazo=f.prazo.value||'';
+  d.itens=d.itens.filter(i=>i.qtd>0);
+  if(!d.itens.length){alert('Adicione pelo menos um item.');return false;}
+  if(!d.titulo)d.titulo=d.itens[0].nome;
+  if(tipo==='pedido'&&!d.estoqueBaixado){
+    const faltas=faltasEstoque(d.itens);
+    if(faltas.length&&!confirm('⚠ Estoque insuficiente:\n'+faltas.map(x=>`• ${x.nome}: precisa de ${fmtQtd(x.precisa)} ${x.un}, tem ${fmtQtd(x.tem)}`).join('\n')+'\n\nSalvar o pedido mesmo assim?'))return false;
+  }
+  d.total=totalDoc(d);
+  if(tipo==='orcamento'){
+    if(d.id){Object.assign(db.orcamentos.find(o=>o.id===d.id),d);}
+    else{d.id=uid('o');d.numero='ORC-'+String(db.seq.orcamento++).padStart(4,'0');d.status='aberto';d.criadoEm=new Date().toISOString();db.orcamentos.push(d);}
+  }else{
+    if(d.id){Object.assign(db.pedidos.find(p=>p.id===d.id),d);}
+    else{d.id=uid('pd');d.numero='PED-'+String(db.seq.pedido++).padStart(4,'0');d.status='pendente';d.criadoEm=new Date().toISOString();db.pedidos.push(d);}
+  }
+  saveDB();fecharModal();
+  showView(tipo==='orcamento'?'orcamentos':'pedidos');
+  toast((tipo==='orcamento'?'Orçamento ':'Pedido ')+d.numero+' salvo.');return false;
+}
+
+/* --- visualização/ações --- */
+function verDoc(tipo,id){
+  const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
+  const ehOrc=tipo==='orcamento';
+  const statusBadge=ehOrc?`<span class="badge b-${d.status}">${STATUS_ORC[d.status]}</span>`:`<span class="badge b-${d.status}">${STATUS_PED[d.status]}</span>`;
+  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="num">${i.qtd}</td><td class="num">${fmtBRL(i.precoUnit)}</td><td class="num">${fmtBRL(i.qtd*i.precoUnit)}</td></tr>`).join('');
+  let botoes='';
+  if(ehOrc){
+    if(d.status==='aberto'){
+      botoes+=`<button class="btn" onclick="aprovarOrcamento('${d.id}')">✔ Aprovar e gerar pedido</button>
+      <button class="btn neutro" onclick="statusOrcamento('${d.id}','perdido')">Marcar como não aprovado</button>`;
+    }else if(d.status==='perdido'){
+      botoes+=`<button class="btn sec" onclick="statusOrcamento('${d.id}','aberto')">Reabrir</button>`;
+    }else if(d.status==='aprovado'){
+      const ped=db.pedidos.find(p=>p.orcamentoId===d.id);
+      if(ped)botoes+=`<button class="btn sec" onclick="fecharModal();verDoc('pedido','${ped.id}')">Ver pedido ${esc(ped.numero)}</button>`;
+    }
+    botoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('orcamento','${d.id}')">Editar</button>
+    <button class="btn sec" onclick="imprimirDoc('orcamento','${d.id}')">Imprimir / PDF</button>
+    <button class="btn perigo" onclick="excluirDoc('orcamento','${d.id}')">Excluir</button>`;
+  }else{
+    if(PROXIMO_PED[d.status])botoes+=`<button class="btn" onclick="avancarPedido('${d.id}',true)">→ ${STATUS_PED[PROXIMO_PED[d.status]]}</button>`;
+    if(d.status!=='cancelado'&&d.status!=='entregue')botoes+=`<button class="btn neutro" onclick="cancelarPedido('${d.id}')">Cancelar pedido</button>`;
+    botoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('pedido','${d.id}')">Editar</button>
+    <button class="btn sec" onclick="imprimirDoc('pedido','${d.id}')">Imprimir / PDF</button>
+    <button class="btn perigo" onclick="excluirDoc('pedido','${d.id}')">Excluir</button>`;
+  }
+  const prazoCampo=!ehOrc?`<div class="campo" style="max-width:200px;margin-top:10px"><label>Prazo de entrega</label><input type="date" value="${d.prazo||''}" onchange="salvarPrazo('${d.id}',this.value)"></div>`:'';
+  abrirModal(`<h3>${ehOrc?'Orçamento':'Pedido'} ${esc(d.numero)} ${statusBadge}</h3>
+    ${d.titulo?`<p style="font-size:1.05rem"><strong>${esc(d.titulo)}</strong></p>`:''}
+    <p><strong>Cliente:</strong> ${esc(d.cliente||'—')} &nbsp; <strong>Data:</strong> ${fmtData(d.data)}${!ehOrc&&d.prazo?' &nbsp; <strong>Prazo:</strong> '+fmtData(d.prazo):''}</p>
+    ${d.obs?`<p class="muted">${esc(d.obs)}</p>`:''}
+    <table class="grid"><thead><tr><th>Item</th><th class="num">Quantidade</th><th class="num">Valor unitário</th><th class="num">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="resumo-linha total"><span>Total</span><span>${fmtBRL(d.total)}</span></div>
+    ${prazoCampo}
+    <div class="acoes">${botoes}<button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
+}
+function statusOrcamento(id,st){const o=db.orcamentos.find(x=>x.id===id);o.status=st;saveDB();fecharModal();render();toast('Orçamento '+o.numero+': '+STATUS_ORC[st]);}
+function aprovarOrcamento(id){
+  const o=db.orcamentos.find(x=>x.id===id);
+  const faltas=faltasEstoque(o.itens);
+  if(faltas.length&&!confirm('⚠ Estoque insuficiente para este pedido:\n'+faltas.map(x=>`• ${x.nome}: precisa de ${fmtQtd(x.precisa)} ${x.un}, tem ${fmtQtd(x.tem)}`).join('\n')+'\n\nAprovar e gerar pedido mesmo assim?'))return;
+  o.status='aprovado';
+  const ped={id:uid('pd'),numero:'PED-'+String(db.seq.pedido++).padStart(4,'0'),orcamentoId:o.id,titulo:o.titulo,data:hojeISO(),cliente:o.cliente,obs:o.obs,itens:JSON.parse(JSON.stringify(o.itens)),total:o.total,status:'pendente',prazo:'',criadoEm:new Date().toISOString()};
+  db.pedidos.push(ped);saveDB();fecharModal();showView('pedidos');
+  toast('Orçamento aprovado. Pedido '+ped.numero+' criado.');
+}
+function avancarPedido(id,manterModal){
+  const p=db.pedidos.find(x=>x.id===id);const prox=PROXIMO_PED[p.status];if(!prox)return;
+  let extra='';
+  if(prox==='em_producao'&&!p.estoqueBaixado){baixarEstoque(p);extra=' · estoque baixado';}
+  p.status=prox;saveDB();
+  if(manterModal){verDoc('pedido',id);}else{render();}
+  toast('Pedido '+p.numero+': '+STATUS_PED[prox]+extra);
+}
+function cancelarPedido(id){
+  const p=db.pedidos.find(x=>x.id===id);
+  if(!confirm('Cancelar o pedido '+p.numero+'?'))return;
+  if(p.estoqueBaixado&&confirm('Este pedido já baixou estoque. Devolver os materiais ao estoque?'))estornarEstoque(p);
+  p.status='cancelado';saveDB();fecharModal();render();toast('Pedido cancelado.');
+}
+function salvarPrazo(id,v){const p=db.pedidos.find(x=>x.id===id);p.prazo=v;saveDB();render();}
+function excluirDoc(tipo,id){
+  const alvo=tipo==='orcamento'?db.orcamentos.find(o=>o.id===id):db.pedidos.find(p=>p.id===id);
+  if(tipo==='pedido'&&alvo&&alvo.estoqueBaixado){
+    if(!confirm('Este pedido já baixou estoque. Excluir e devolver os materiais ao estoque?'))return;
+    estornarEstoque(alvo);
+  }else if(!confirm('Excluir definitivamente?'))return;
+  if(tipo==='orcamento')db.orcamentos=db.orcamentos.filter(o=>o.id!==id);
+  else db.pedidos=db.pedidos.filter(p=>p.id!==id);
+  saveDB();fecharModal();render();toast('Excluído.');
+}
+function imprimirDoc(tipo,id){
+  const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
+  const titulo=tipo==='orcamento'?'ORÇAMENTO':'PEDIDO';
+  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td style="text-align:right">${i.qtd}</td><td style="text-align:right">${fmtBRL(i.precoUnit)}</td><td style="text-align:right">${fmtBRL(i.qtd*i.precoUnit)}</td></tr>`).join('');
+  $('#printArea').innerHTML=`
+    <img src="${LOGO}" alt="" style="height:90px;width:90px;border-radius:50%;object-fit:cover">
+    <h1 style="font-family:Georgia,serif">${esc(db.config.nomeLoja||'PriArte Ateliê')}</h1>
+    ${db.config.contato?`<p>${esc(db.config.contato)}</p>`:''}
+    <h2 style="font-size:1.05rem;margin:14px 0 4px">${titulo} ${esc(d.numero)}${d.titulo?' — '+esc(d.titulo):''}</h2>
+    <p>Cliente: <strong>${esc(d.cliente||'—')}</strong><br>Data: ${fmtData(d.data)}${tipo==='pedido'&&d.prazo?'<br>Prazo de entrega: '+fmtData(d.prazo):''}</p>
+    ${d.obs?`<p>Obs: ${esc(d.obs)}</p>`:''}
+    <table><thead><tr><th>Item</th><th style="text-align:right">Qtd.</th><th style="text-align:right">Preço unit.</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
+    <p class="tot">TOTAL: ${fmtBRL(d.total)}</p>
+    <p style="margin-top:26px;font-size:.85rem;color:#555">Documento gerado em ${fmtData(hojeISO())}.</p>`;
+  window.print();
+}
+
+/* ================= configurações ================= */
+function renderConfig(){
+  const c=db.config;
+  $('#view-config').innerHTML=`
+    <div class="barra"><h2>Configurações</h2></div>
+    <div class="duas-col">
+      <div class="painel">
+        <h3>Meu ateliê</h3>
+        <form onsubmit="return salvarConfig(event)">
+          <div class="formgrid">
+            <div class="campo largo"><label>Nome do ateliê</label><input name="nomeLoja" value="${esc(c.nomeLoja)}"></div>
+            <div class="campo largo"><label>Contato nos orçamentos</label><input name="contato" value="${esc(c.contato||'')}" placeholder="WhatsApp ou Instagram"></div>
+          </div>
+          <h4>Valor do seu trabalho</h4>
+          <div class="formgrid">
+            <div class="campo largo"><label>Retirada desejada por mês (R$)</label><input name="salario" inputmode="decimal" value="${c.salario}"></div>
+            <div class="campo"><label>Dias de trabalho por mês</label><input name="diasMes" inputmode="numeric" value="${c.diasMes}"></div>
+            <div class="campo"><label>Horas de trabalho por dia</label><input name="horasDia" inputmode="decimal" value="${c.horasDia}"></div>
+          </div>
+          <h4>Despesas mensais do ateliê</h4>
+          <div id="listaCF">${c.custosFixos.map(cf=>`<div class="formgrid cf-linha">
+            <div class="campo"><input class="cfNome" value="${esc(cf.nome)}" placeholder="Despesa" aria-label="Nome da despesa"></div>
+            <div class="campo"><input class="cfValor" inputmode="decimal" value="${cf.valor}" placeholder="R$" aria-label="Valor mensal da despesa em reais"></div>
+            <div class="campo"><button type="button" class="btn mini perigo" aria-label="Remover despesa" onclick="marcarFormularioEditado(this);this.closest('.formgrid').remove()">✕</button></div>
+          </div>`).join('')}</div>
+          <div class="acoes" style="margin-top:6px"><button type="button" class="btn mini neutro" onclick="addCustoFixo()">+ Adicionar despesa</button></div>
+          <details><summary>Rateio das despesas na produção</summary>
+            <div class="campo"><label>Horas para dividir as despesas do mês</label><input name="divisorCustoFixo" inputmode="numeric" value="${c.divisorCustoFixo}"><small>Define a parcela das despesas incluída no custo de cada hora de produção.</small></div>
+          </details>
+          <div class="acoes"><button class="btn" type="submit">Salvar configurações</button></div>
+        </form>
+        <div class="painel" style="background:color-mix(in srgb,var(--accent) 6%,var(--panel));margin-top:10px">
+          <div class="resumo-linha"><span>Valor da hora de trabalho</span><strong>${fmtBRL(valorHoraTrabalho())}</strong></div>
+          <div class="resumo-linha"><span>Despesas por hora</span><strong>${fmtBRL(custoFixoHora())}</strong></div>
+          <div class="resumo-linha total"><span>Custo total por hora de produção</span><strong>${fmtBRL(valorHoraTrabalho()+custoFixoHora())}</strong></div>
+        </div>
+      </div>
+      <div class="painel">
+        <div class="config-bloco">
+          <h3>Sincronização</h3>
+          <p id="configSyncStatus" role="status">${esc(statusSync())}</p>
+          <p class="muted">${nuvemAtiva()?esc(nuvem.session.user.email||''):'Conecte a nuvem para usar os mesmos dados no iPhone e no PC.'}</p>
+          <div class="acoes"><button class="btn sec" onclick="abrirSync()">${nuvemAtiva()?'Ver conexão':'Conectar nuvem'}</button></div>
+        </div>
+        <div class="config-bloco">
+          <h3>Cópia de segurança</h3>
+          <div class="acoes">
+            <button class="btn sec" onclick="exportarBackup()">Baixar backup</button>
+            <label class="btn neutro">Restaurar backup<input class="backup-input" type="file" accept=".json,application/json" onchange="importarBackup(this)"></label>
+          </div>
+        </div>
+        <div class="config-bloco">
+          <h3>Neste aparelho</h3>
+          <div class="acoes">
+            <button class="btn neutro" id="btnTema" onclick="toggleTema()">${document.body.classList.contains('claro')?'Usar tema escuro':'Usar tema claro'}</button>
+            <button class="btn neutro" id="btnInstalar" onclick="abrirInstalar()">Instalar app</button>
+          </div>
+        </div>
+        <p class="contagem">PriArte · versão ${APP_VERSAO}</p>
+      </div>
+    </div>`;
+  atualizaBtnInstalar();
+}
+function addCustoFixo(){
+  marcarFormularioEditado($('#listaCF'));
+  const div=document.createElement('div');div.className='formgrid cf-linha';
+  div.innerHTML=`<div class="campo"><input class="cfNome" placeholder="Despesa" aria-label="Nome da despesa"></div>
+  <div class="campo"><input class="cfValor" inputmode="decimal" placeholder="R$" aria-label="Valor mensal da despesa em reais"></div>
+  <div class="campo"><button type="button" class="btn mini perigo" aria-label="Remover despesa" onclick="marcarFormularioEditado(this);this.closest('.formgrid').remove()">✕</button></div>`;
+  $('#listaCF').appendChild(div);
+}
+function salvarConfig(ev){
+  ev.preventDefault();const f=ev.target;const c=db.config;
+  c.nomeLoja=f.nomeLoja.value.trim()||'PriArte Ateliê';c.contato=f.contato.value.trim();
+  c.salario=parseNum(f.salario.value);c.diasMes=parseNum(f.diasMes.value);c.horasDia=parseNum(f.horasDia.value);
+  c.divisorCustoFixo=parseNum(f.divisorCustoFixo.value)||720;
+  const nomes=$$('.cfNome'),valores=$$('.cfValor');
+  c.custosFixos=nomes.map((n,i)=>({id:'cf'+i+'_'+Date.now().toString(36),nome:n.value.trim(),valor:parseNum(valores[i].value)})).filter(cf=>cf.nome);
+  saveDB();render();toast('Configurações salvas.');return false;
+}
+function exportarBackup(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='papelaria-backup-'+hojeISO()+'.json';a.click();URL.revokeObjectURL(a.href);
+  toast('Backup exportado.');
+}
+function importarBackup(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const obj=JSON.parse(reader.result);
+      const dados=normalizarArquivoSync(obj).dados;
+      const nArq=(dados.orcamentos||[]).length,nLoc=(db.orcamentos||[]).length;
+      let msg='Importar vai substituir TODOS os dados atuais.\n\n';
+      if(dados.atualizadoEm)msg+='Salvo em: '+new Date(dados.atualizadoEm).toLocaleString('pt-BR')+'\n';
+      msg+=`\nArquivo: ${nArq} orçamentos · Atual: ${nLoc} orçamentos.\n\nContinuar?`;
+      if(!confirm(msg))return;
+      db=dados;
+      migrarDB(false);saveDB();render();toast('Dados importados do arquivo.');
+    }catch(e){alert('Arquivo inválido: '+e.message);}
+  };
+  reader.readAsText(file);inp.value='';
+}
+/* ================= marca ================= */
+const LOGO='data:image/jpeg;base64,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';
+
+/* ================= sincronização entre dispositivos =================
+   Nuvem gratuita (Supabase): funciona no Safari/iPhone e no PC.
+   Arquivo vinculado: alternativa em navegadores com File System Access.
+   Leituras não criam revisões. Alterações offline ficam pendentes.
+*/
+let syncHandle=null;
+let syncAutorizado=false;
+let syncBusy=false;
+let syncErro='';
+let ultimoSync=null;
+let aplicandoSync=false;
+let syncConflito=null;
+let syncAdiado=false;
+let syncPromessa=null;
+let syncRepetir=false;
+let syncTimer=null;
+let syncDebounce=null;
+const SYNC_DB_KEY='papelariaSyncDB';
+const SYNC_STATE_KEY='papelariaSyncEstado';
+const CLOUD_KEY='papelariaNuvem';
+const SYNC_POLL_MS=30000;
+let syncEstado={origem:'',base:null,pendente:false,versao:0,ultimoEnvio:null};
+let nuvem=null;
+try{
+  const salvo=JSON.parse(localStorage.getItem(SYNC_STATE_KEY)||'null');
+  if(salvo&&typeof salvo==='object')Object.assign(syncEstado,salvo);
+  const config=JSON.parse(localStorage.getItem(CLOUD_KEY)||'null');
+  if(config){validarConexaoNuvem(config.url,config.key);nuvem=config;}
+}catch(e){console.warn('Configuração de sincronização indisponível.');}
+
+function nuvemAtiva(){return !!(nuvem&&nuvem.session&&nuvem.session.user);}
+function temOrigemSync(){return nuvemAtiva()||!!syncHandle;}
+function salvarEstadoSync(){
+  try{localStorage.setItem(SYNC_STATE_KEY,JSON.stringify(syncEstado));}catch(e){console.warn(e);}
+}
+function selecionarOrigemSync(){
+  const origem=nuvemAtiva()?'nuvem:'+nuvem.url+':'+nuvem.session.user.id:'arquivo';
+  if(syncEstado.origem!==origem){
+    syncEstado.origem=origem;syncEstado.base=null;syncEstado.versao=0;syncEstado.ultimoEnvio=null;
+    syncConflito=null;salvarEstadoSync();
+  }
+}
+function statusSync(){
+  if(syncBusy)return 'Sincronizando…';
+  if(syncConflito)return 'Escolha os dados que deseja manter';
+  if(nuvemAtiva()&&nuvem.precisaLogin)return 'Entre novamente para sincronizar';
+  if(!nuvemAtiva()&&syncHandle&&!syncAutorizado)return 'Toque em Atualizar para autorizar';
+  if(syncErro)return 'Não foi possível sincronizar';
+  if(syncAdiado)return 'Dados novos disponíveis. Conclua o formulário para atualizar.';
+  if(!temOrigemSync())return 'Nuvem não conectada';
+  if(syncEstado.pendente)return 'Alterações aguardando envio';
+  if(!nuvemAtiva()&&syncHandle)return 'Arquivo vinculado. Nuvem ainda não conectada.';
+  return ultimoSync?'Atualizado':'Aguardando primeira atualização';
+}
+function atualizaSyncBtn(){
+  const b=$('#btnSync');if(!b)return;
+  const arquivo=!nuvemAtiva()&&!!syncHandle;
+  b.textContent=syncBusy?(arquivo?'📁 …':'☁️ …'):syncConflito?'☁️ Resolver':
+    (nuvemAtiva()&&nuvem.precisaLogin)?'☁️ Entrar':
+    !temOrigemSync()?'☁️ Conectar':syncErro?'☁️ Tentar novamente':
+    syncEstado.pendente?(arquivo?'📁 Salvar arquivo':'☁️ Enviar'):
+    arquivo?'📁 Atualizar arquivo':'☁️ Atualizar';
+  b.title=statusSync()+(ultimoSync?' · '+ultimoSync.toLocaleTimeString('pt-BR'):'');
+  b.setAttribute('aria-label',b.title);
+  const status=$('#syncStatus');if(status)status.textContent=statusSync();
+  const configStatus=$('#configSyncStatus');if(configStatus)configStatus.textContent=statusSync();
+}
+function assinaturaDados(dados){
+  // O PostgreSQL/jsonb pode devolver as propriedades em outra ordem.
+  return JSON.stringify(dados,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?
+    Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
+}
+function normalizarArquivoSync(obj){
+  const dados=obj&&obj.dados?obj.dados:obj;
+  if(!dados||!Array.isArray(dados.materiais)||!Array.isArray(dados.produtos)||
+    !Array.isArray(dados.orcamentos)||!Array.isArray(dados.pedidos)||
+    !dados.config||!Array.isArray(dados.config.custosFixos)||!dados.seq){
+    throw new Error('O arquivo não contém dados válidos da PriArte.');
+  }
+  return {dados,rev:dados.rev||obj.rev||0,atualizadoEm:dados.atualizadoEm||obj.atualizadoEm||null};
+}
+function payloadSync(){return {app:'PriArte Ateliê',rev:db.rev||0,atualizadoEm:db.atualizadoEm||null,dados:db};}
+function registrarAlteracaoSync(){
+  syncEstado.pendente=true;salvarEstadoSync();atualizaSyncBtn();
+  if(!temOrigemSync())return;
+  syncRepetir=true;
+  clearTimeout(syncDebounce);
+  syncDebounce=setTimeout(()=>checarAtualizacaoRemota(true),400);
+}
+function aplicarDadosRemotos(remoto){
+  aplicandoSync=true;
+  try{db=remoto.dados;migrarDB(false);persistirDB();}finally{aplicandoSync=false;}
+  render();
+}
+function editandoFormulario(){
+  return !!($('#overlay.aberto form')||$('form[data-sync-editando="1"]'));
+}
+function marcarFormularioEditado(ev){
+  const alvo=ev.target||ev;
+  const form=alvo.closest&&alvo.closest('form');
+  if(form)form.dataset.syncEditando='1';
+}
+document.addEventListener('input',marcarFormularioEditado);
+document.addEventListener('change',marcarFormularioEditado);
+
+/* Permissão do arquivo é solicitada apenas a partir de um clique. */
+function dbSyncOpen(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(SYNC_DB_KEY,1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('cfg');
+    r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
+    r.onblocked=()=>rej(new Error('Feche outra aba do app e tente novamente.'));
+  });
+}
+async function dbSyncGet(k){
+  let d;
+  try{d=await dbSyncOpen();return await new Promise((res,rej)=>{
+    const r=d.transaction('cfg').objectStore('cfg').get(k);
+    r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
+  });}catch(e){return undefined;}finally{if(d)d.close();}
+}
+async function dbSyncSet(k,v){
+  const d=await dbSyncOpen();
+  try{await new Promise((res,rej)=>{
+    const t=d.transaction('cfg','readwrite');
+    if(v===undefined)t.objectStore('cfg').delete(k);else t.objectStore('cfg').put(v,k);
+    t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);
+  });}finally{d.close();}
+}
+async function carregarHandleSync(){
+  if(nuvemAtiva()){
+    selecionarOrigemSync();iniciarSyncAuto();await checarAtualizacaoRemota(true);return;
+  }
+  if(nuvem){syncHandle=null;syncAutorizado=false;atualizaSyncBtn();return;}
+  syncHandle=await dbSyncGet('handle')||null;
+  if(syncHandle){
+    selecionarOrigemSync();
+    try{syncAutorizado=await syncHandle.queryPermission({mode:'readwrite'})==='granted';}
+    catch(e){syncErro='Toque em Atualizar para autorizar o arquivo.';}
+    if(syncAutorizado){iniciarSyncAuto();await checarAtualizacaoRemota(true);}
+  }
+  atualizaSyncBtn();
+}
+async function sincronizarAgora(){
+  if(syncBusy)return syncPromessa;
+  if(syncConflito){abrirConflitoSync();return;}
+  if(!temOrigemSync()||(nuvemAtiva()&&nuvem.precisaLogin)){abrirSync();return;}
+  if(!nuvemAtiva()&&!syncAutorizado){
+    try{
+      syncAutorizado=await syncHandle.requestPermission({mode:'readwrite'})==='granted';
+      if(!syncAutorizado){toast('Autorize o arquivo para atualizar.');return;}
+      syncErro='';iniciarSyncAuto();
+    }catch(e){syncErro='Não foi possível autorizar o arquivo.';atualizaSyncBtn();toast(syncErro);return;}
+  }
+  await checarAtualizacaoRemota(false);
+  if(syncConflito)abrirConflitoSync();
+  else if(syncErro)abrirSync();
+}
+async function escolherArquivoSync(novo){
+  if(syncBusy)return;
+  if(nuvemAtiva()){toast('Desconecte a nuvem antes de vincular um arquivo.');return;}
+  if(!('showOpenFilePicker' in window)){abrirSync();return;}
+  try{
+    const opcoes={id:'priarte-dados',types:[{description:'Dados da PriArte',accept:{'application/json':['.json']}}]};
+    if(syncHandle)opcoes.startIn=syncHandle;
+    const handle=novo&&window.showSaveFilePicker?
+      await window.showSaveFilePicker({...opcoes,suggestedName:'papelaria-dados.json'}):
+      (await window.showOpenFilePicker({...opcoes,multiple:false}))[0];
+    const permissao=await handle.requestPermission({mode:'readwrite'});
+    if(permissao!=='granted')throw new Error('Autorize a leitura e gravação do arquivo.');
+    const texto=await (await handle.getFile()).text();
+    const remoto=texto.trim()?normalizarArquivoSync(JSON.parse(texto)):null;
+    if(!novo&&!remoto)throw new Error('O arquivo está vazio.');
+    if(remoto&&syncEstado.pendente&&assinaturaDados(db)!==assinaturaDados(remoto.dados)&&
+      !confirm('Carregar este arquivo substituirá as alterações deste aparelho. Continuar?'))return;
+    await dbSyncSet('handle',handle);
+    nuvem=null;localStorage.removeItem(CLOUD_KEY);
+    syncHandle=handle;syncAutorizado=true;syncConflito=null;syncErro='';
+    syncEstado={origem:'arquivo',base:remoto?assinaturaDados(remoto.dados):null,pendente:!remoto,versao:0};
+    if(remoto)aplicarDadosRemotos(remoto);
+    salvarEstadoSync();iniciarSyncAuto();fecharModal();
+    await checarAtualizacaoRemota(false);
+  }catch(e){if(e.name!=='AbortError'){syncErro=e.message;toast(syncErro);}}
+  atualizaSyncBtn();
+}
+function vincularArquivoExistente(){return escolherArquivoSync(false);}
+function vincularArquivoSync(){return escolherArquivoSync(true);}
+async function lerArquivoSync(){
+  const texto=await (await syncHandle.getFile()).text();
+  return texto.trim()?normalizarArquivoSync(JSON.parse(texto)):null;
+}
+
+/* Supabase REST: sem bibliotecas externas, senha nunca é guardada. */
+function validarConexaoNuvem(url,key){
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url||'')){
+    throw new Error('Informe a URL do projeto: https://seu-projeto.supabase.co');
+  }
+  let publica=(key||'').startsWith('sb_publishable_');
+  if(!publica){
+    try{publica=JSON.parse(atob(key.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).role==='anon';}catch(e){}
+  }
+  if(!publica)throw new Error('Use a chave pública publishable ou anon do projeto.');
+}
+function guardarNuvem(){localStorage.setItem(CLOUD_KEY,JSON.stringify(nuvem));}
+async function requisicaoNuvem(config,caminho,{method='GET',body,token}={}){
+  const controlador=new AbortController();
+  const timer=setTimeout(()=>controlador.abort(),15000);
+  try{
+    const headers={apikey:config.key,'Content-Type':'application/json'};
+    if(token)headers.Authorization='Bearer '+token;
+    const res=await fetch(config.url+caminho,{method,headers,cache:'no-store',
+      signal:controlador.signal,body:body===undefined?undefined:JSON.stringify(body)});
+    const texto=await res.text();let resposta=null;
+    try{resposta=texto?JSON.parse(texto):null;}catch(e){}
+    if(!res.ok){
+      let mensagem=resposta&&(resposta.msg||resposta.message||resposta.error_description);
+      if(res.status===401)mensagem='Entre novamente para sincronizar.';
+      if(res.status===404)mensagem='Conclua a configuração da nuvem com o arquivo supabase-sync.sql.';
+      const erro=new Error(mensagem||'A nuvem está indisponível. Tente novamente.');
+      erro.status=res.status;erro.code=resposta&&resposta.code;throw erro;
+    }
+    return resposta;
+  }catch(e){
+    if(e.name==='AbortError'||e instanceof TypeError)throw new Error('Sem conexão com a nuvem. As alterações ficam neste aparelho.');
+    throw e;
+  }finally{clearTimeout(timer);}
+}
+function guardarSessao(sessao){
+  if(!sessao||!sessao.access_token||!sessao.refresh_token||!sessao.user)throw new Error('Não foi possível entrar.');
+  nuvem.session={access_token:sessao.access_token,refresh_token:sessao.refresh_token,
+    expires_at:sessao.expires_at||Math.floor(Date.now()/1000)+(sessao.expires_in||3600),user:sessao.user};
+  nuvem.precisaLogin=false;guardarNuvem();
+}
+async function renovarSessaoNuvem(forcar=false){
+  const renovar=async()=>{
+    const salva=JSON.parse(localStorage.getItem(CLOUD_KEY)||'null');
+    if(salva&&salva.url===nuvem.url&&salva.session&&salva.session.user.id===nuvem.session.user.id)nuvem.session=salva.session;
+    if(!forcar&&nuvem.session.expires_at>Date.now()/1000+60)return;
+    try{
+      guardarSessao(await requisicaoNuvem(nuvem,'/auth/v1/token?grant_type=refresh_token',
+        {method:'POST',body:{refresh_token:nuvem.session.refresh_token}}));
+    }catch(e){
+      if(e.status===400||e.status===401||e.status===403){
+        nuvem.precisaLogin=true;guardarNuvem();throw new Error('Entre novamente para sincronizar.');
+      }
+      throw e;
+    }
+  };
+  if(navigator.locks)return navigator.locks.request('papelaria-renovar-sessao',renovar);
+  return renovar();
+}
+async function apiNuvem(caminho,opcoes={}){
+  if(nuvem.precisaLogin)throw new Error('Entre novamente para sincronizar.');
+  await renovarSessaoNuvem();
+  try{return await requisicaoNuvem(nuvem,caminho,{...opcoes,token:nuvem.session.access_token});}
+  catch(e){
+    if(e.status!==401)throw e;
+    await renovarSessaoNuvem(true);
+    try{return await requisicaoNuvem(nuvem,caminho,{...opcoes,token:nuvem.session.access_token});}
+    catch(erro){
+      if(erro.status===401){nuvem.precisaLogin=true;guardarNuvem();}
+      throw erro;
+    }
+  }
+}
+async function conectarNuvem(ev){
+  ev.preventDefault();if(syncBusy)return false;
+  const f=ev.target,b=f.querySelector('button[type=submit]'),erro=f.querySelector('[role=alert]');
+  b.disabled=true;erro.textContent='';
+  try{
+    const config={url:f.url.value.trim().replace(/\/$/,''),key:f.chave.value.trim()};
+    validarConexaoNuvem(config.url,config.key);
+    const sessao=await requisicaoNuvem(config,'/auth/v1/token?grant_type=password',
+      {method:'POST',body:{email:f.email.value.trim(),password:f.senha.value}});
+    if(syncPromessa)await syncPromessa;
+    nuvem=config;guardarSessao(sessao);f.senha.value='';
+    syncHandle=null;syncAutorizado=false;
+    selecionarOrigemSync();syncErro='';syncConflito=null;
+    iniciarSyncAuto();fecharModal();await checarAtualizacaoRemota(false);
+    if(syncConflito)abrirConflitoSync();
+  }catch(e){erro.textContent=e.message;}finally{b.disabled=false;}
+  return false;
+}
+async function lerOrigemSync(){
+  if(!nuvemAtiva())return lerArquivoSync();
+  const linhas=await apiNuvem('/rest/v1/papelaria_sync?select=version,payload,updated_at&user_id=eq.'+
+    encodeURIComponent(nuvem.session.user.id)+'&limit=1');
+  if(!Array.isArray(linhas))throw new Error('Resposta inválida da nuvem.');
+  if(!linhas.length)return null;
+  return {...normalizarArquivoSync(linhas[0].payload),versao:linhas[0].version};
+}
+async function escreverOrigemSync(payload,versao){
+  if(nuvemAtiva()){
+    const linhas=await apiNuvem('/rest/v1/rpc/salvar_papelaria',{method:'POST',
+      body:{p_versao:versao,p_payload:payload}});
+    if(!Array.isArray(linhas)||!linhas[0])throw new Error('A nuvem não confirmou o envio.');
+    return linhas[0].version;
+  }
+  const w=await syncHandle.createWritable();
+  try{await w.write(JSON.stringify(payload));await w.close();}
+  catch(e){try{await w.abort();}catch(ignorado){}throw e;}
+  return 0;
+}
+
+/* Uma operação por vez; um novo save durante o envio entra na próxima rodada. */
+function checarAtualizacaoRemota(silencioso=true){
+  if(!temOrigemSync()||(!nuvemAtiva()&&!syncAutorizado))return Promise.resolve();
+  if(syncPromessa){syncRepetir=true;return syncPromessa;}
+  if(syncConflito)return Promise.resolve();
+  syncBusy=true;atualizaSyncBtn();
+  syncPromessa=(async()=>{
+    try{
+      let conflitosDeGravacao=0;
+      do{
+        syncRepetir=false;
+        selecionarOrigemSync();
+        const remoto=await lerOrigemSync();
+        syncAdiado=false;syncErro='';
+        const assinaturaRemota=remoto?assinaturaDados(remoto.dados):null;
+        const assinaturaLocal=assinaturaDados(db);
+        if(remoto&&assinaturaLocal===assinaturaRemota){
+          syncEstado.base=assinaturaRemota;syncEstado.versao=remoto.versao||0;syncEstado.pendente=false;
+        }else if(remoto&&assinaturaRemota!==syncEstado.base){
+          if(syncEstado.pendente){
+            syncConflito=remoto;toast('Há alterações nos dois aparelhos. Toque em Resolver.');break;
+          }
+          if(editandoFormulario()){
+            syncAdiado=true;
+            if(!silencioso)toast('Há dados novos. Conclua ou feche o formulário para carregar.');
+            break;
+          }
+          aplicarDadosRemotos(remoto);
+          syncEstado.base=assinaturaRemota;syncEstado.versao=remoto.versao||0;
+        }else if(syncEstado.pendente||!remoto){
+          if(!remoto&&syncEstado.base!==null)throw new Error('Os dados sincronizados não foram encontrados. Sua cópia local foi mantida.');
+          const payload=JSON.parse(JSON.stringify(payloadSync()));
+          const enviado=assinaturaDados(payload.dados);
+          try{syncEstado.versao=await escreverOrigemSync(payload,remoto?remoto.versao||0:0);}
+          catch(e){
+            if(e.status===409&&++conflitosDeGravacao<=3){syncRepetir=true;continue;}
+            throw e;
+          }
+          syncEstado.base=enviado;
+          syncEstado.ultimoEnvio=new Date().toISOString();
+          syncEstado.pendente=assinaturaDados(db)!==enviado;
+          if(syncEstado.pendente)syncRepetir=true;
+        }
+        ultimoSync=new Date();syncErro='';salvarEstadoSync();
+      }while(syncRepetir&&!syncConflito);
+      if(!silencioso&&!syncConflito&&!editandoFormulario())toast('Dados atualizados.');
+    }catch(e){
+      syncErro=e.message||'Não foi possível sincronizar.';
+      if(!nuvemAtiva()&&(e.name==='NotAllowedError'||e.name==='SecurityError'))syncAutorizado=false;
+      if(!silencioso)toast(syncErro);
+    }finally{syncBusy=false;syncPromessa=null;atualizaSyncBtn();}
+  })();
+  return syncPromessa;
+}
+function iniciarSyncAuto(){
+  clearInterval(syncTimer);
+  syncTimer=setInterval(()=>{if(!document.hidden)checarAtualizacaoRemota(true);},SYNC_POLL_MS);
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checarAtualizacaoRemota(true);});
+window.addEventListener('focus',()=>checarAtualizacaoRemota(true));
+window.addEventListener('pageshow',()=>checarAtualizacaoRemota(true));
+window.addEventListener('online',()=>checarAtualizacaoRemota(true));
+
+function abrirConflitoSync(){
+  abrirModal(`<h3>☁️ Qual versão deseja manter?</h3>
+    <p>Este aparelho e ${nuvemAtiva()?'a nuvem':'o arquivo'} têm alterações diferentes. A versão escolhida substituirá a outra.</p>
+    <div class="acoes">
+      <button class="btn" onclick="resolverConflitoSync('remoto')">Usar dados ${nuvemAtiva()?'da nuvem':'do arquivo'}</button>
+      <button class="btn sec" onclick="resolverConflitoSync('local')">Usar dados deste aparelho</button>
+      <button class="btn neutro" onclick="baixarCopiaDados()">Baixar cópia deste aparelho</button>
+    </div>`);
+}
+async function resolverConflitoSync(escolha){
+  if(!syncConflito||syncBusy)return;
+  const remoto=syncConflito;
+  if(escolha==='remoto'){
+    // Guarda também a cópia anterior no dispositivo, antes da substituição.
+    try{localStorage.setItem('papelariaAntesDaTroca',JSON.stringify(payloadSync()));}
+    catch(e){toast('Baixe uma cópia deste aparelho antes de substituir os dados.');return;}
+    aplicarDadosRemotos(remoto);syncEstado.pendente=false;
+  }else syncEstado.pendente=true;
+  syncEstado.base=assinaturaDados(remoto.dados);syncEstado.versao=remoto.versao||0;
+  syncConflito=null;syncErro='';salvarEstadoSync();fecharModal();
+  await checarAtualizacaoRemota(false);
+}
+function abrirSync(){
+  const suporte='showOpenFilePicker' in window;
+  const conectado=nuvemAtiva()&&!nuvem.precisaLogin;
+  abrirModal(`<h3>☁️ Sincronização</h3>
+    <p id="syncStatus" role="status">${esc(statusSync())}</p>
+    ${!nuvemAtiva()&&syncHandle?'<p class="muted">Este aparelho está usando um arquivo. Para receber as alterações do iPhone pela nuvem, conecte abaixo o mesmo projeto e login.</p>':''}
+    ${syncErro?`<p class="neg">${esc(syncErro)}</p>`:''}
+    ${conectado?`
+      <p class="muted">${esc(nuvem.session.user.email||'')}</p>
+      <details><summary>Conexão deste aparelho</summary>
+        <p class="muted">Projeto: ${esc(nuvem.url)}<br>
+        Conta: ${esc(nuvem.session.user.id)}<br>
+        Versão recebida: ${syncEstado.versao||0}<br>
+        Último envio: ${syncEstado.ultimoEnvio?new Date(syncEstado.ultimoEnvio).toLocaleString('pt-BR'):'nenhum confirmado'}<br>
+        App: ${APP_VERSAO}</p>
+      </details>
+      <div class="acoes">
+        <button class="btn" onclick="sincronizarAgora()">Atualizar agora</button>
+        <button class="btn sec" onclick="baixarCopiaDados()">Baixar backup</button>
+        <button class="btn neutro" onclick="desconectarNuvem()">Desconectar</button>
+      </div>`:`
+      <p class="muted">Conecte a mesma conta no iPhone e no PC. A configuração fica salva neste navegador.</p>
+      <form onsubmit="conectarNuvem(event);return false">
+        <details ${nuvem&&nuvem.url?'':'open'}>
+          <summary>Configuração da nuvem</summary>
+          <div class="formgrid" style="margin-top:10px">
+            <div class="campo largo"><label for="syncUrl">URL do projeto</label><input id="syncUrl" name="url" type="url" required placeholder="https://seu-projeto.supabase.co" value="${esc(nuvem&&nuvem.url||'')}" autocapitalize="none" spellcheck="false"></div>
+            <div class="campo largo"><label for="syncChave">Chave pública (publishable ou anon)</label><input id="syncChave" name="chave" required value="${esc(nuvem&&nuvem.key||'')}" autocapitalize="none" spellcheck="false"></div>
+          </div>
+          <p class="muted"><a href="https://github.com/LeonardoRozanski/priarte/blob/master/SINCRONIZACAO.md" target="_blank" rel="noopener" style="color:var(--accent)">Preparar a conexão gratuita</a></p>
+        </details>
+        <div class="formgrid" style="margin-top:10px">
+          <div class="campo"><label for="syncEmail">E-mail</label><input id="syncEmail" name="email" type="email" required autocomplete="username" autocapitalize="none" value="${esc(nuvem&&nuvem.session&&nuvem.session.user.email||'')}"></div>
+          <div class="campo"><label for="syncSenha">Senha</label><input id="syncSenha" name="senha" type="password" required autocomplete="current-password"></div>
+        </div>
+        <p class="neg" role="alert"></p>
+        <div class="acoes"><button class="btn" type="submit">Conectar e atualizar</button></div>
+      </form>
+      <details style="margin-top:18px">
+        <summary>Usar arquivo no iCloud</summary>
+        ${syncHandle?`<p class="muted">Arquivo: ${esc(syncHandle.name||'papelaria-dados.json')}</p>
+          <div class="acoes"><button class="btn" onclick="sincronizarAgora()">Atualizar arquivo</button>
+          <button class="btn neutro" onclick="desvincularSync()">Desvincular</button></div>`:''}
+        ${suporte?`<p class="muted">Escolha uma vez o arquivo na pasta do iCloud. O navegador poderá pedir autorização novamente.</p>
+          <div class="acoes"><button class="btn sec" onclick="vincularArquivoExistente()">${syncHandle?'Mudar arquivo':'Vincular arquivo'}</button>
+          <button class="btn neutro" onclick="vincularArquivoSync()">Criar arquivo</button></div>`:
+          '<p class="muted">Neste navegador, carregar e salvar no iCloud exige escolher o arquivo manualmente.</p>'}
+        <div class="acoes">
+          <label class="btn sec" style="cursor:pointer">Carregar arquivo<input type="file" accept=".json,application/json" style="display:none" onchange="importarBackup(this)"></label>
+          <button class="btn sec" onclick="baixarCopiaDados()">Salvar cópia</button>
+        </div>
+      </details>`}
+    <div class="acoes"><button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
+}
+function baixarCopiaDados(){
+  const blob=new Blob([JSON.stringify(payloadSync())],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='papelaria-dados.json';
+  a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup baixado.');
+}
+async function desconectarNuvem(){
+  if(syncBusy)return;
+  if(syncEstado.pendente&&!confirm('Há alterações que ainda não foram enviadas. Desconectar mesmo assim?'))return;
+  try{await apiNuvem('/auth/v1/logout?scope=local',{method:'POST'});}catch(e){}
+  nuvem.session=null;nuvem.precisaLogin=false;guardarNuvem();
+  syncHandle=null;syncAutorizado=false;
+  syncConflito=null;syncErro='';clearInterval(syncTimer);syncTimer=null;
+  await carregarHandleSync();atualizaSyncBtn();fecharModal();toast('Nuvem desconectada deste aparelho.');
+}
+async function desvincularSync(){
+  if(syncBusy)return;
+  try{await dbSyncSet('handle',undefined);}catch(e){toast('Não foi possível desvincular o arquivo.');return;}
+  syncHandle=null;syncAutorizado=false;syncConflito=null;syncErro='';
+  if(!nuvemAtiva()){clearInterval(syncTimer);syncTimer=null;}
+  atualizaSyncBtn();fecharModal();toast('Arquivo desvinculado.');
+}
+
+/* ================= instalação do app =================
+   Manifest embutido; sw.js fornece o cache offline em HTTPS/localhost. */
+function isIOS(){return /iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function isSafari(){return /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent);}
+function isStandalone(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}
+let deferredInstall=null;
+window.addEventListener('beforeinstallprompt',ev=>{ev.preventDefault();deferredInstall=ev;});
+
+function instalarPWA(){
+  if(isStandalone())return;
+  /* manifest inline */
+  try{
+    const man={name:'PriArte Ateliê — Controle',short_name:'PriArte',start_url:'.',scope:'.',display:'standalone',
+      background_color:'#1d1512',theme_color:'#1d1512',lang:'pt-BR',
+      icons:[{src:LOGO,sizes:'256x256',type:'image/jpeg',purpose:'any'}]};
+    $('#linkManifest').href=URL.createObjectURL(new Blob([JSON.stringify(man)],{type:'application/json'}));
+  }catch(e){}
+}
+const EH_FILE=location.protocol==='file:';
+function passosInstalacao(){
+  if(isStandalone())return {titulo:'App instalado',passos:['O PriArte já está instalado neste aparelho.']};
+  if(isIOS())return {titulo:'Instalar no iPhone/iPad',passos:[
+    'No Safari, abra <strong>Compartilhar</strong> e escolha <strong>Adicionar à Tela de Início</strong>.',
+    'Confirme em <strong>Adicionar</strong>.']};
+  if(isSafari()&&/Mac/.test(navigator.platform))return {titulo:'Instalar no Mac',passos:[
+    'No Safari, escolha <strong>Arquivo → Adicionar ao Dock</strong>.']};
+  if(/Android/i.test(navigator.userAgent))return {titulo:'Instalar no Android',passos:[
+    deferredInstall?'Toque em Instalar agora.':'No Chrome, abra o menu ⋮ e escolha <strong>Adicionar à tela inicial</strong>.']};
+  /* Windows / Linux / Mac no Chrome */
+  if(EH_FILE)return {titulo:'Acesso rápido',passos:[
+    'Use <kbd>Ctrl+D</kbd> para salvar nos favoritos. Para instalar, abra o endereço do PriArte no navegador.']};
+  return {titulo:'Instalar no computador',passos:[
+    deferredInstall?'Clique em Instalar agora.':'No Chrome, abra o menu ⋮ → <strong>Transmitir, salvar e compartilhar → Instalar esta página como um app</strong>.']};
+}
+function abrirInstalar(){
+  const p=passosInstalacao();
+  abrirModal(`<h3>${p.titulo}</h3>
+    <ol class="muted" style="line-height:1.8">${p.passos.map(s=>`<li>${s}</li>`).join('')}</ol>
+    <div class="acoes">
+      ${deferredInstall?'<button class="btn" onclick="instalarAgora()">Instalar agora</button>':''}
+      <button class="btn neutro" onclick="fecharModal()">Fechar</button>
+    </div>`);
+}
+async function instalarAgora(){
+  if(!deferredInstall)return;
+  deferredInstall.prompt();
+  await deferredInstall.userChoice;
+  deferredInstall=null;fecharModal();atualizaBtnInstalar();
+}
+function atualizaBtnInstalar(){
+  const b=$('#btnInstalar');if(!b)return;
+  if(isStandalone()){b.textContent='App instalado';b.title='App instalado';}
+  else{b.textContent='Instalar app';b.title='Instalar neste aparelho';}
+}
+
+/* ================= tema ================= */
+function aplicaTema(t){
+  document.body.classList.toggle('claro',t==='claro');
+  const b=$('#btnTema');if(b)b.textContent=t==='claro'?'Usar tema escuro':'Usar tema claro';
+  try{localStorage.setItem('papelariaTema',t);}catch(e){}
+}
+function toggleTema(){aplicaTema(document.body.classList.contains('claro')?'escuro':'claro');}
+
+/* ================= init ================= */
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
+}
+loadDB();
+migrarDB();
+$('#logoImg').src=LOGO;
+instalarPWA();
+let temaIni='escuro';
+try{temaIni=localStorage.getItem('papelariaTema')||'escuro';}catch(e){}
+aplicaTema(temaIni);
+showView('dashboard');
+atualizaSyncBtn();
+atualizaBtnInstalar();
+carregarHandleSync();
+try{localStorage.setItem('papelariaVersao',APP_VERSAO);}catch(e){}
+</script>
+</body>
+</html>
