@@ -112,6 +112,31 @@ export async function runTests() {
   };
   new vm.Script(script);
 
+  await check('Instalação nova começa vazia, sem cadastros ou valores pessoais no HTML', async () => {
+    const device = makeDevice(new Cloud(), { cloudEnabled: false });
+    for (const collection of ['materiais', 'produtos', 'lotes', 'orcamentos', 'pedidos']) assert.deepEqual(device.get('db.' + collection), []);
+    assert.deepEqual(device.get('db.config.custosFixos'), []);
+    for (const field of ['salario', 'diasMes', 'horasDia', 'divisorCustoFixo']) assert.equal(device.get('db.config.' + field), 0);
+    assert.equal(device.get('db.config.contato'), '');
+    assert.deepEqual(device.get('db.seq'), { orcamento: 1, pedido: 1 });
+    assert.equal(await readFile(new URL('../docs/index.html', import.meta.url), 'utf8'), html);
+  });
+
+  await check('Atualizar o código preserva todos os dados privados já salvos no aparelho', async () => {
+    const empty = makeDevice(new Cloud(), { cloudEnabled: false }).get('db');
+    const privateData = { ...empty, rev: 12, atualizadoEm: '2026-01-01T12:00:00Z',
+      config: { ...empty.config, nomeLoja: 'Ateliê fictício de teste', contato: 'Contato fictício', salario: 1500, diasMes: 20, horasDia: 6, divisorCustoFixo: 120, custosFixos: [{ id: 'despesa-teste', nome: 'Despesa fictícia', valor: 50 }] },
+      materiais: [{ id: 'material-teste', nome: 'Material fictício', fornecedor: 'Fornecedor fictício', unidade: 'Unidades', estoqueAtual: 12, custoUnitario: 2, controlaEstoque: true }],
+      produtos: [{ id: 'produto-teste', nome: 'Produto fictício', itens: [{ materialId: 'material-teste', qtd: 2 }], tempoMin: 5, lucroPct: 30 }],
+      lotes: [{ id: 'lote-teste', materialId: 'material-teste', quantidade: 12, qtdRestante: 12, valorUnitario: 2 }],
+      orcamentos: [{ id: 'orcamento-teste', titulo: 'Orçamento fictício', cliente: 'Cliente fictício', itens: [], total: 10 }],
+      pedidos: [{ id: 'pedido-teste', titulo: 'Pedido fictício', itens: [], total: 20 }], seq: { orcamento: 8, pedido: 9 } };
+    const storage = new Storage([['papelariaDBv1', JSON.stringify(privateData)]]);
+    const reopened = makeDevice(new Cloud(), { storage, cloudEnabled: false });
+    assert.deepEqual(reopened.get('db'), privateData);
+    assert.deepEqual(JSON.parse(storage.getItem('papelariaDBv1')), privateData);
+  });
+
   await check('Aberturas e leituras preservam a revisão; primeiro aparelho cria os dados', async () => {
     const cloud = new Cloud(), pc = makeDevice(cloud);
     assert.equal(pc.get('db.rev||0'), 0);
@@ -135,7 +160,9 @@ export async function runTests() {
   });
 
   await check('Campo de busca focado no PC não impede receber o estoque alterado no iPhone', async () => {
-    const cloud = new Cloud(), pc = makeDevice(cloud); await pc.open();
+    const cloud = new Cloud(), pc = makeDevice(cloud);
+    pc.run('db.materiais.push({id:"material-teste",nome:"Material fictício de teste",estoqueAtual:10,controlaEstoque:true});saveDB()');
+    await pc.open();
     const iphone = makeDevice(cloud); await iphone.open();
     const quantity = iphone.get('db.materiais[0].estoqueAtual') + 10;
     iphone.context.quantity = quantity;
