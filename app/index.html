@@ -400,7 +400,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.09-8';
+const APP_VERSAO='2026.10.09-9';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1352,16 +1352,21 @@ function excluirDoc(tipo,id){
   saveDB();fecharModal();render();toast('Excluído.');
 }
 function mensagemOrcamento(d){
-  const linhas=[d.cliente?'Olá, '+d.cliente+'!':'Olá!','',
-    'Segue seu orçamento de '+(db.config.nomeLoja||'PriArte Ateliê')+':',
-    '*Orçamento '+d.numero+'* · '+fmtData(d.data)];
-  if(d.titulo)linhas.push(d.titulo);
-  linhas.push('');
-  d.itens.forEach(i=>linhas.push('• '+Number(i.qtd).toLocaleString('pt-BR',{maximumFractionDigits:6})+' × '+i.nome+'\n  '+fmtBRL(i.precoUnit)+' cada · '+fmtBRL(i.qtd*i.precoUnit)));
-  linhas.push('','*Total: '+fmtBRL(d.total)+'*');
-  if(d.obs)linhas.push('','Observações:',d.obs);
-  linhas.push('','Se estiver tudo certo, responda por aqui para combinarmos os próximos passos.');
-  return linhas.join('\n');
+  const cliente=(d.cliente||'').trim();
+  const blocos=[cliente?'Olá, '+cliente+'!':'Olá!',
+    'Preparei seu orçamento de papelaria personalizada. Seguem os detalhes para você conferir:',
+    '*Orçamento '+d.numero+'*\nData: '+fmtData(d.data)];
+  if(d.titulo?.trim())blocos.push('*Projeto:* '+d.titulo.trim());
+  d.itens.forEach(i=>blocos.push(
+    '*'+Number(i.qtd).toLocaleString('pt-BR',{maximumFractionDigits:6})+' × '+i.nome+'*\n'+
+    'Valor unitário: '+fmtBRL(i.precoUnit)+'\nSubtotal: '+fmtBRL(i.qtd*i.precoUnit)));
+  blocos.push('*Total do orçamento: '+fmtBRL(d.total)+'*');
+  const observacoes=(d.obs||'').trim();
+  if(observacoes)blocos.push('*Observações:*\n\n'+observacoes.split(/\r?\n+/).map(linha=>linha.trim()).filter(Boolean).join('\n\n'));
+  blocos.push('Se quiser ajustar algum detalhe ou tiver alguma dúvida, estou à disposição.',
+    'Quando estiver tudo certo, me confirme para combinarmos os próximos passos do pedido.',
+    '*'+(db.config.nomeLoja||'PriArte Ateliê')+'*\nPapelaria personalizada');
+  return blocos.join('\n\n');
 }
 function abrirMensagemWhatsApp(id){
   const d=db.orcamentos.find(x=>x.id===id);if(!d)return;
