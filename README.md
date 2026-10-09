@@ -103,6 +103,12 @@ de lucro é aplicado sobre o custo; o preço de venda opcional substitui o calcu
 - Despesas por hora: despesas mensais ÷ horas de rateio configuradas
 - Sem preço de marketplace: só materiais, mão de obra, custo fixo e lucro
 
+Os subtotais dos materiais, trabalho e despesas são arredondados para centavos antes
+de somar. O lucro é calculado sobre esse custo total, e o preço automático fecha com
+os valores exibidos. Custos unitários de materiais mantêm a precisão necessária;
+preços definidos manualmente são preservados. Orçamentos, PDF e WhatsApp somam os
+mesmos subtotais, sem buscar preços novos para itens já salvos.
+
 ---
 
 ## Arquivos do projeto
@@ -129,6 +135,7 @@ Com Node.js, execute os cenários locais:
 
 ```sh
 node --input-type=module -e "import('./tests/sync.test.mjs').then(async m => console.log(await m.runTests()))"
+node --input-type=module -e "import('./tests/calculos.test.mjs').then(async m => console.log(await m.runTests()))"
 ```
 
 O teste `tests/supabase-sync.test.sql` usa um PostgreSQL descartável com os dois scripts
@@ -142,3 +149,8 @@ rascunhos, navegação entre modais, telas pequenas e grandes, usando apenas dad
 Com Playwright e pypdf, execute `python tests/orcamento.test.py` para conferir os PDFs,
 orçamentos com várias páginas, mensagem de WhatsApp e ações fixas. `PRIARTE_QA_DIR`
 permite guardar as prévias em uma pasta privada fora do Git.
+
+`python tests/calculos-interface.test.py` verifica contas exibidas, compras com
+frete, validação dos valores, preços manuais e edição de orçamentos. Os testes de
+cálculos e orçamento também aceitam `PRIARTE_ENGINE=webkit` para verificar o motor
+usado pelo Safari, além do Chrome/Chromium.

@@ -760,12 +760,32 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const BRL = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
-const fmtBRL = v => BRL.format(Number(v)||0);
-function parseNum(s){
-  if(typeof s==='number') return isFinite(s)?s:0;
-  s=(s||'').toString().trim(); if(!s) return 0;
+const BRL_UNITARIO = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:6});
+const fmtBRL = v => BRL.format(arredondarValor(v));
+const fmtCustoUnit = v => BRL_UNITARIO.format(parseNum(v));
+function converterNumero(s){
+  if(typeof s==='number')return Number.isFinite(s)?s:NaN;
+  s=(s??'').toString().replace(/R\$/gi,'').replace(/\s/g,'').trim();if(!s)return 0;
   if(s.indexOf(',')>=0) s=s.replace(/\./g,'').replace(',','.');
-  const n=parseFloat(s); return isFinite(n)?n:0;
+  if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(s))return NaN;
+  const n=Number(s);return Number.isFinite(n)?n:NaN;
+}
+function parseNum(s){const n=converterNumero(s);return Number.isFinite(n)?n:0;}
+function centavos(valor){
+  const n=parseNum(valor),escalado=Math.abs(n)*100;
+  const inteiro=Math.floor(escalado+.5+Number.EPSILON*Math.max(1,escalado)*4);
+  return inteiro?Math.sign(n)*inteiro:0;
+}
+function arredondarValor(valor){return centavos(valor)/100;}
+function somarValores(valores){return valores.reduce((s,v)=>s+centavos(v),0)/100;}
+function validarNumeroCampo(campo,{minimo=0,positivo=false,inteiro=false}={}){
+  const valor=converterNumero(campo.value);
+  const erro=!Number.isFinite(valor)?'Informe um número válido.':
+    (valor<minimo||(positivo&&valor<=0))?'Informe um valor '+(positivo?'maior que zero.':'igual ou maior que '+minimo+'.'):
+    (inteiro&&!Number.isInteger(valor))?'Informe um número inteiro.':'';
+  campo.setCustomValidity(erro);
+  if(erro){campo.addEventListener('input',()=>campo.setCustomValidity(''),{once:true});campo.reportValidity();campo.focus();return false;}
+  return true;
 }
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function uid(p){return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
@@ -776,7 +796,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.09-10';
+const APP_VERSAO='2026.10.09-11';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -833,22 +853,23 @@ function migrarDB(persistir=true){
 }
 
 /* ================= cálculos ================= */
-function fmtQtd(v){const n=Math.round((Number(v)||0)*100)/100;return String(n).replace('.',',');}
+function fmtQtd(v){return parseNum(v).toLocaleString('pt-BR',{maximumFractionDigits:6,useGrouping:false});}
 const UNIDADES_MATERIAL=[['Folhas','Folhas','folha'],['Unidades','Unidades','un.'],['Metros(m)','Metros (m)','m'],['Centímetros(cm)','Centímetros (cm)','cm'],['Gramas(g)','Gramas (g)','g']];
 function unidadeNome(unidade){return UNIDADES_MATERIAL.find(u=>u[0]===unidade)?.[1]||unidade;}
 function unidadeCurta(unidade){return UNIDADES_MATERIAL.find(u=>u[0]===unidade)?.[2]||unidade;}
 /* custo unitário do material = custo médio ponderado dos lotes em estoque;
    sem estoque, usa o último lote conhecido (para a precificação não quebrar) */
 function custoUnit(m){
-  if(m.controlaEstoque===false)return m.custoUnitario||0;
-  const lotes=db.lotes.filter(l=>l.materialId===m.id&&l.qtdRestante>0);
-  const qtd=lotes.reduce((s,l)=>s+l.qtdRestante,0);
-  if(qtd>0)return lotes.reduce((s,l)=>s+l.qtdRestante*l.valorUnitario,0)/qtd;
-  const ult=db.lotes.filter(l=>l.materialId===m.id).sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
-  if(ult)return ult.valorUnitario;
-  return m.custoUnitario||0;
+  if(m.controlaEstoque===false)return parseNum(m.custoUnitario);
+  const lotes=db.lotes.filter(l=>l.materialId===m.id&&parseNum(l.qtdRestante)>0);
+  const qtd=lotes.reduce((s,l)=>s+parseNum(l.qtdRestante),0);
+  if(qtd>0)return lotes.reduce((s,l)=>s+parseNum(l.qtdRestante)*parseNum(l.valorUnitario),0)/qtd;
+  const ult=db.lotes.map((l,indice)=>({l,indice})).filter(x=>x.l.materialId===m.id)
+    .sort((a,b)=>(b.l.data||'').localeCompare(a.l.data||'')||(b.l.criadoEm||'').localeCompare(a.l.criadoEm||'')||b.indice-a.indice)[0]?.l;
+  if(ult)return parseNum(ult.valorUnitario);
+  return parseNum(m.custoUnitario);
 }
-function valorEmEstoque(m){return (m.estoqueAtual||0)*custoUnit(m);}
+function valorEmEstoque(m){return arredondarValor(parseNum(m.estoqueAtual)*custoUnit(m));}
 function statusEstoque(m){
   if(m.controlaEstoque===false)return['semcontrole','Sem estoque físico'];
   const e=m.estoqueAtual||0;
@@ -873,8 +894,8 @@ function necessidadeMateriais(itens){
 function faltasEstoque(itens){
   const need=necessidadeMateriais(itens);
   return Object.keys(need).map(mid=>{const m=materialById(mid);
-    return {nome:m.nome,un:m.unidade,precisa:Math.round(need[mid]*100)/100,tem:Math.round((m.estoqueAtual||0)*100)/100};
-  }).filter(x=>x.precisa>x.tem);
+    return {nome:m.nome,un:m.unidade,precisa:need[mid],tem:parseNum(m.estoqueAtual)};
+  }).filter(x=>x.precisa-x.tem>1e-8);
 }
 /* baixa FIFO: consome do lote mais antigo primeiro; guarda o rastro para estorno */
 function baixarEstoque(ped){
@@ -905,33 +926,48 @@ function estornarEstoque(ped){
 }
 /* quantas unidades do produto o estoque atual permite produzir */
 function producivel(p){
-  let min=Infinity,tem=false;
+  const necessidade={};
   for(const r of (p.itens||[])){
     const m=materialById(r.materialId);if(!m||m.controlaEstoque===false)continue;
-    tem=true;min=Math.min(min,Math.floor((m.estoqueAtual||0)/r.qtd));
+    if(parseNum(r.qtd)>0)necessidade[m.id]=(necessidade[m.id]||0)+parseNum(r.qtd);
   }
-  return tem?min:null;
+  const ids=Object.keys(necessidade);if(!ids.length)return null;
+  return Math.max(0,Math.min(...ids.map(id=>{
+    const unidades=parseNum(materialById(id).estoqueAtual)/necessidade[id];
+    return Math.floor(unidades+Number.EPSILON*Math.max(1,Math.abs(unidades))*4);
+  })));
 }
 function materialById(id){return db.materiais.find(m=>m.id===id);}
 function produtoById(id){return db.produtos.find(p=>p.id===id);}
-function valorHoraTrabalho(){const c=db.config;return c.diasMes*c.horasDia>0?c.salario/(c.diasMes*c.horasDia):0;}
-function custoFixoHora(){const c=db.config;const tot=c.custosFixos.reduce((s,i)=>s+(Number(i.valor)||0),0);return c.divisorCustoFixo>0?tot/c.divisorCustoFixo:0;}
+function valorHoraTrabalho(){const c=db.config,horas=parseNum(c.diasMes)*parseNum(c.horasDia);return horas>0?arredondarValor(c.salario)/horas:0;}
+function custoFixoHora(){const c=db.config,tot=somarValores((c.custosFixos||[]).map(i=>i.valor)),horas=parseNum(c.divisorCustoFixo);return horas>0?tot/horas:0;}
 function custoProduto(p){
-  const tempoH=(p.tempoMin||0)/60;
+  const tempoH=parseNum(p.tempoMin)/60;
   let mat=0;const detalhe=[];
   for(const it of (p.itens||[])){
     const m=materialById(it.materialId);if(!m)continue;
-    const vu=custoUnit(m);const vt=vu*it.qtd;mat+=vt;
+    const vu=custoUnit(m);const vt=arredondarValor(vu*parseNum(it.qtd));mat+=centavos(vt);
     detalhe.push({nome:m.nome,qtd:it.qtd,un:m.unidade,vu,vt});
   }
-  const maoDeObra=valorHoraTrabalho()*tempoH;
-  const custoFixo=custoFixoHora()*tempoH;
-  return {materiais:mat,maoDeObra,custoFixo,total:mat+maoDeObra+custoFixo,detalhe};
+  const materiais=mat/100;
+  const maoDeObra=arredondarValor(valorHoraTrabalho()*tempoH);
+  const custoFixo=arredondarValor(custoFixoHora()*tempoH);
+  return {materiais,maoDeObra,custoFixo,total:somarValores([materiais,maoDeObra,custoFixo]),detalhe};
 }
 /* equação de precificação: (materiais + mão de obra + custo fixo) × (1 + lucro%) */
-function precoSugerido(p){return custoProduto(p).total*(1+(p.lucroPct||0)/100);}
-function precoFinal(p){return p.precoFinalManual!=null?p.precoFinalManual:precoSugerido(p);}
-function lucroProduto(p){return precoFinal(p)-custoProduto(p).total;}
+function precoSugerido(p){const custo=custoProduto(p).total;return somarValores([custo,arredondarValor(custo*parseNum(p.lucroPct)/100)]);}
+function precoFinal(p){return p.precoFinalManual!=null?parseNum(p.precoFinalManual):precoSugerido(p);}
+function lucroProduto(p){return somarValores([precoFinal(p),-custoProduto(p).total]);}
+function resumoPrecificacao(p){
+  const c=custoProduto(p),manual=p.precoFinalManual!=null;
+  return `<div class="resumo-linha"><span>Materiais</span><span>${fmtBRL(c.materiais)}</span></div>
+    <div class="resumo-linha"><span>Trabalho · ${fmtQtd(p.tempoMin||0)} min</span><span>${fmtBRL(c.maoDeObra)}</span></div>
+    <div class="resumo-linha"><span>Despesas do ateliê</span><span>${fmtBRL(c.custoFixo)}</span></div>
+    <div class="resumo-linha total"><span>Custo total</span><span>${fmtBRL(c.total)}</span></div>
+    <div class="resumo-linha"><span>${manual?'Lucro por unidade':'Lucro sobre o custo · '+fmtQtd(p.lucroPct||0)+'%'}</span><span>${fmtBRL(lucroProduto(p))}</span></div>
+    ${manual?`<div class="resumo-linha"><span>Preço calculado</span><span>${fmtBRL(precoSugerido(p))}</span></div>`:''}
+    <div class="resumo-linha total"><span>Preço de venda${manual?' (definido por você)':' (calculado)'}</span><span>${fmtBRL(precoFinal(p))}</span></div>`;
+}
 
 /* ================= navegação ================= */
 let view='dashboard';
@@ -1073,7 +1109,7 @@ function renderDashboard(){
   const limiteISO=limite.getFullYear()+'-'+pad2(limite.getMonth()+1)+'-'+pad2(limite.getDate());
   const entregas=ativos.filter(p=>p.prazo&&p.prazo>=hoje&&p.prazo<=limiteISO);
   const alertas=materiaisEmAlerta();
-  const soma=a=>a.reduce((s,x)=>s+(x.total||0),0);
+  const soma=a=>somarValores(a.map(totalDocumento));
   $('#view-dashboard').innerHTML=`
     <div class="barra inicio"><h2>Meu ateliê</h2><div class="spacer"></div>
       <button class="btn" onclick="abrirFormDoc('orcamento')">+ Novo orçamento</button>
@@ -1105,12 +1141,12 @@ function listaAlertas(alertas){
 function listaResumoOrc(){
   const itens=db.orcamentos.filter(o=>o.status==='aberto').sort((a,b)=>(b.criadoEm||'').localeCompare(a.criadoEm||'')).slice(0,6);
   if(!itens.length)return '<div class="vazio"><strong>Nenhum orçamento aguardando aprovação</strong>Os novos orçamentos aparecem aqui.</div>';
-  return '<div class="lista-trabalhos">'+itens.map(o=>`<button class="trabalho" onclick="verDoc('orcamento','${o.id}')"><span class="trabalho-info"><span class="trabalho-nome">${esc(o.titulo||o.numero)}</span><span class="muted">${esc(o.cliente||'Cliente não informado')} · ${esc(o.numero)}</span></span><span class="trabalho-fim"><strong>${fmtBRL(o.total)}</strong><span class="muted">${fmtData(o.data)}</span></span></button>`).join('')+'</div>';
+  return '<div class="lista-trabalhos">'+itens.map(o=>`<button class="trabalho" onclick="verDoc('orcamento','${o.id}')"><span class="trabalho-info"><span class="trabalho-nome">${esc(o.titulo||o.numero)}</span><span class="muted">${esc(o.cliente||'Cliente não informado')} · ${esc(o.numero)}</span></span><span class="trabalho-fim"><strong>${fmtBRL(totalDocumento(o))}</strong><span class="muted">${fmtData(o.data)}</span></span></button>`).join('')+'</div>';
 }
 function listaResumoPed(){
   const itens=db.pedidos.filter(p=>p.status!=='entregue'&&p.status!=='cancelado').sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999')).slice(0,6);
   if(!itens.length)return '<div class="vazio"><strong>Nenhum pedido em andamento</strong>Sua fila de produção está livre.</div>';
-  return '<div class="lista-trabalhos">'+itens.map(p=>`<button class="trabalho" onclick="verDoc('pedido','${p.id}')"><span class="trabalho-info"><span class="trabalho-nome">${esc(p.titulo||p.numero)}</span><span class="muted">${esc(p.cliente||'Cliente não informado')} · ${esc(p.numero)}</span><span class="${p.prazo&&p.prazo<hojeISO()?'neg':'muted'}">${p.prazo?(p.prazo<hojeISO()?'Atrasado · ':p.prazo===hojeISO()?'Entrega hoje · ':'Entrega · ')+fmtData(p.prazo):'Sem prazo definido'}</span></span><span class="trabalho-fim"><span class="badge b-${p.status}">${STATUS_PED[p.status]}</span><strong>${fmtBRL(p.total)}</strong></span></button>`).join('')+'</div>';
+  return '<div class="lista-trabalhos">'+itens.map(p=>`<button class="trabalho" onclick="verDoc('pedido','${p.id}')"><span class="trabalho-info"><span class="trabalho-nome">${esc(p.titulo||p.numero)}</span><span class="muted">${esc(p.cliente||'Cliente não informado')} · ${esc(p.numero)}</span><span class="${p.prazo&&p.prazo<hojeISO()?'neg':'muted'}">${p.prazo?(p.prazo<hojeISO()?'Atrasado · ':p.prazo===hojeISO()?'Entrega hoje · ':'Entrega · ')+fmtData(p.prazo):'Sem prazo definido'}</span></span><span class="trabalho-fim"><span class="badge b-${p.status}">${STATUS_PED[p.status]}</span><strong>${fmtBRL(totalDocumento(p))}</strong></span></button>`).join('')+'</div>';
 }
 
 /* ================= estoque / materiais ================= */
@@ -1131,7 +1167,7 @@ function renderMateriais(){
     const ctrl=m.controlaEstoque!==false,[stClass,stLabel]=statusEstoque(m),est=m.estoqueAtual||0;
     if(!estoque)return `<tr>
       <td><button class="btn mini sec" onclick="fichaMaterial('${m.id}')">${esc(m.nome)}</button></td>
-      <td>${esc(unidadeNome(m.unidade))}</td><td class="num">${fmtBRL(custoUnit(m))}</td>
+      <td>${esc(unidadeNome(m.unidade))}</td><td class="num">${fmtCustoUnit(custoUnit(m))}</td>
       <td class="muted">${esc(m.fornecedor||'Não informado')}</td>
       <td class="num"><button class="btn mini neutro" onclick="abrirFormMaterial('${m.id}')">Editar</button>
       <button class="btn mini perigo" onclick="excluirMaterial('${m.id}')">✕</button></td></tr>`;
@@ -1139,7 +1175,7 @@ function renderMateriais(){
       <td><button class="btn mini sec" onclick="fichaMaterial('${m.id}')">${esc(m.nome)}</button><div><span class="badge b-${stClass}">${stLabel}</span></div></td>
       <td class="num">${ctrl?`<strong class="${est<0?'neg':''}">${fmtQtd(est)}</strong> <span class="muted">${esc(m.unidade)}</span>`:'<span class="muted">Sem estoque físico</span>'}</td>
       <td class="num">${ctrl?fmtQtd(m.estoqueMinimo||0):'—'}</td>
-      <td class="num">${fmtBRL(custoUnit(m))}</td>
+      <td class="num">${fmtCustoUnit(custoUnit(m))}</td>
       <td class="num">${ctrl?fmtBRL(valorEmEstoque(m)):'—'}</td>
       <td class="num">${ctrl?`<button class="btn mini sec" onclick="abrirCompra('${m.id}')">+ Compra</button>
       <button class="btn mini neutro" onclick="abrirAjuste('${m.id}')">Ajustar</button>`:''}
@@ -1148,7 +1184,7 @@ function renderMateriais(){
   $('#view-materiais').innerHTML=`
     <div class="barra"><h2>Materiais</h2><div class="spacer"></div><button class="btn" onclick="abrirFormMaterial()">+ Novo material</button></div>
     <div class="catalogo-resumo"><span><strong>${db.materiais.length}</strong> cadastrados</span>
-      <span><strong>${nAlertas}</strong> para repor</span>${estoque?`<span>Valor em estoque: <strong>${fmtBRL(controlados.reduce((s,m)=>s+valorEmEstoque(m),0))}</strong></span>`:''}</div>
+      <span><strong>${nAlertas}</strong> para repor</span>${estoque?`<span>Valor em estoque: <strong>${fmtBRL(somarValores(controlados.map(valorEmEstoque)))}</strong></span>`:''}</div>
     <div class="catalogo-filtros">
       <div class="subtabs" aria-label="Visualização dos materiais">
         <button class="${estoque?'':'ativo'}" aria-pressed="${!estoque}" onclick="trocarAbaMateriais('cadastro')">Cadastro</button>
@@ -1169,7 +1205,7 @@ function fichaMaterial(id){
   abrirModal(`<h3>${esc(m.nome)}</h3>
     <span class="badge b-${stClass}">${stLabel}</span>
     <div class="ficha-metricas">
-      <div><span class="muted">Custo por unidade</span><strong>${fmtBRL(custoUnit(m))} / ${esc(unidadeCurta(m.unidade))}</strong></div>
+      <div><span class="muted">Custo por unidade</span><strong>${fmtCustoUnit(custoUnit(m))} / ${esc(unidadeCurta(m.unidade))}</strong></div>
       <div><span class="muted">Disponível</span><strong>${ctrl?fmtQtd(m.estoqueAtual||0)+' '+esc(m.unidade):'Sem estoque físico'}</strong></div>
     </div>
     <div class="resumo-linha"><span>Fornecedor</span><span>${esc(m.fornecedor||'Não informado')}</span></div>
@@ -1195,7 +1231,7 @@ function abrirFormMaterial(id,opcoes={}){
         ${UNIDADES_MATERIAL.some(u=>u[0]===m.unidade)?'':`<option value="${esc(m.unidade)}" selected>${esc(m.unidade)}</option>`}
       </select></div>
       <div class="campo"><label>Estoque mínimo</label><input name="estoqueMinimo" inputmode="decimal" value="${m.estoqueMinimo||0}"><small>Alerta de reposição ao atingir esta quantidade.</small></div>
-      <div class="campo"><label>Custo de referência (R$ / unidade)</label><input name="custoUnitario" inputmode="decimal" value="${m.custoUnitario||0}"><small>Usado quando não há compras disponíveis.</small></div>
+      <div class="campo"><label>Custo de referência (R$ / unidade)</label><input name="custoUnitario" inputmode="decimal" value="${m.custoUnitario||0}"><small>Usado para materiais sem estoque físico ou sem histórico de compras.</small></div>
       <div class="campo largo"><label style="flex-direction:row;display:flex;align-items:center;gap:8px"><input type="checkbox" name="controlaEstoque" ${m.controlaEstoque!==false?'checked':''} style="width:auto"> Controlar estoque deste material</label></div>
     </div>
     <p class="muted">Serviços, como impressão, podem ser cadastrados sem estoque físico.</p>
@@ -1205,6 +1241,7 @@ function abrirFormMaterial(id,opcoes={}){
 }
 function salvarMaterial(ev,id,aoSalvar){
   ev.preventDefault();const f=ev.target;
+  if(![f.estoqueMinimo,f.custoUnitario].every(campo=>validarNumeroCampo(campo)))return false;
   const dados={nome:f.nome.value.trim(),fornecedor:f.fornecedor.value.trim(),unidade:f.unidade.value.trim()||'Unidades',
     estoqueMinimo:parseNum(f.estoqueMinimo.value),custoUnitario:parseNum(f.custoUnitario.value),
     controlaEstoque:!!f.controlaEstoque.checked};
@@ -1244,17 +1281,18 @@ function abrirCompra(id){
 }
 function salvarCompra(ev,id){
   ev.preventDefault();const f=ev.target;const m=materialById(id);
+  if(!validarNumeroCampo(f.quantidade,{positivo:true})||![f.preco,f.frete].every(campo=>validarNumeroCampo(campo))||!validarNumeroCampo(f.numItens,{minimo:1,inteiro:true}))return false;
   const qtd=parseNum(f.quantidade.value);
   if(qtd<=0){alert('Informe a quantidade.');return false;}
-  const preco=parseNum(f.preco.value),frete=parseNum(f.frete.value),nI=Math.max(1,Math.round(parseNum(f.numItens.value))||1);
-  const vu=Math.round(((preco+frete/nI)/qtd)*1000000)/1000000;
+  const preco=arredondarValor(f.preco.value),frete=arredondarValor(f.frete.value),nI=parseNum(f.numItens.value);
+  const vu=(preco+frete/nI)/qtd;
   db.lotes.push({id:uid('l'),materialId:id,data:f.data.value||hojeISO(),quantidade:qtd,qtdRestante:qtd,
     preco,frete,numItens:nI,valorUnitario:vu,fornecedor:f.fornecedor.value.trim(),obs:f.obs.value.trim(),
     criadoEm:new Date().toISOString()});
   m.estoqueAtual=Math.round(((m.estoqueAtual||0)+qtd)*10000)/10000;
   const forn=f.fornecedor.value.trim();if(forn)m.fornecedor=forn;
   saveDB();fecharModal();render();
-  toast(`Compra registrada: +${fmtQtd(qtd)} ${m.unidade} (${fmtBRL(vu)}/un).`);return false;
+  toast(`Compra registrada: +${fmtQtd(qtd)} ${m.unidade} (${fmtCustoUnit(vu)}/un).`);return false;
 }
 function abrirAjuste(id){
   const m=materialById(id);if(!m)return;
@@ -1270,6 +1308,7 @@ function abrirAjuste(id){
 }
 function salvarAjuste(ev,id){
   ev.preventDefault();const f=ev.target;const m=materialById(id);
+  if(!validarNumeroCampo(f.novoEstoque))return false;
   m.estoqueAtual=Math.round(parseNum(f.novoEstoque.value)*10000)/10000;
   saveDB();fecharModal();render();toast('Estoque ajustado para '+fmtQtd(m.estoqueAtual)+' '+m.unidade+'.');return false;
 }
@@ -1284,14 +1323,14 @@ function abrirLotes(id){
       <td class="num">${fmtQtd(l.quantidade)}</td>
       <td class="num"><strong>${fmtQtd(l.qtdRestante)}</strong></td>
       <td class="num">${fmtBRL(totalPago)}</td>
-      <td class="num">${fmtBRL(l.valorUnitario)}</td>
+      <td class="num">${fmtCustoUnit(l.valorUnitario)}</td>
       <td class="muted">${esc(l.fornecedor||'')}</td>
       <td class="muted">${esc(l.obs||'')}</td>
       <td class="num">${l.qtdRestante>=l.quantidade-0.00001?`<button class="btn mini perigo" onclick="excluirLote('${l.id}','${id}')">✕</button>`:''}</td></tr>`;
   }).join(''):'<tr><td colspan="8" class="muted">Nenhum lote registrado.</td></tr>';
   const ctrl=m.controlaEstoque!==false;
   abrirModal(`<h3>Histórico de compras · ${esc(m.nome)}</h3>
-    <p>${ctrl?`Estoque atual: <strong>${fmtQtd(m.estoqueAtual||0)} ${esc(m.unidade)}</strong> · Custo médio: <strong>${fmtBRL(custoUnit(m))}</strong>`:'Material sem controle de estoque.'}</p>
+    <p>${ctrl?`Estoque atual: <strong>${fmtQtd(m.estoqueAtual||0)} ${esc(m.unidade)}</strong> · Custo médio: <strong>${fmtCustoUnit(custoUnit(m))}</strong>`:'Material sem controle de estoque.'}</p>
     <details><summary>Dados do material</summary>
       <div class="resumo-linha"><span>Fornecedor padrão</span><span>${esc(m.fornecedor||'Não informado')}</span></div>
       <div class="resumo-linha"><span>Estoque mínimo</span><span>${fmtQtd(m.estoqueMinimo||0)} ${esc(m.unidade)}</span></div>
@@ -1335,20 +1374,13 @@ function renderProdutos(){
 function fichaProduto(id){
   const p=produtoById(id);if(!p)return;
   const c=custoProduto(p);
-  const linhas=c.detalhe.length?c.detalhe.map(d=>`<tr><td>${esc(d.nome)}</td><td class="num">${d.qtd} ${esc(d.un)}</td><td class="num">${fmtBRL(d.vu)}</td><td class="num">${fmtBRL(d.vt)}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">Nenhum material vinculado a este produto.</td></tr>';
+  const linhas=c.detalhe.length?c.detalhe.map(d=>`<tr><td>${esc(d.nome)}</td><td class="num">${fmtQtd(d.qtd)} ${esc(d.un)}</td><td class="num">${fmtCustoUnit(d.vu)}</td><td class="num">${fmtBRL(d.vt)}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">Nenhum material vinculado a este produto.</td></tr>';
   const prod=producivel(p);
   abrirModal(`<h3>${esc(p.nome)}</h3>
     ${p.obs?`<p class="muted">${esc(p.obs)}</p>`:''}
     ${prod!=null?`<p class="${prod<=0?'neg':'muted'}">📦 Com o estoque atual dá para produzir <strong>${prod} un</strong></p>`:''}
     <table class="grid"><thead><tr><th>Material</th><th class="num">Quantidade</th><th class="num">Custo por unidade</th><th class="num">Custo</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div style="margin-top:12px">
-      <div class="resumo-linha"><span>Materiais</span><span>${fmtBRL(c.materiais)}</span></div>
-      <div class="resumo-linha"><span>Tempo de trabalho · ${p.tempoMin||0} min</span><span>${fmtBRL(c.maoDeObra)}</span></div>
-      <div class="resumo-linha"><span>Despesas do ateliê</span><span>${fmtBRL(c.custoFixo)}</span></div>
-      <div class="resumo-linha total"><span>Custo total</span><span>${fmtBRL(c.total)}</span></div>
-      <div class="resumo-linha"><span>Lucro por unidade</span><span>${fmtBRL(lucroProduto(p))}</span></div>
-      <div class="resumo-linha total"><span>Preço de venda${p.precoFinalManual!=null?' (definido por você)':''}</span><span>${fmtBRL(precoFinal(p))}</span></div>
-    </div>
+    <div style="margin-top:12px">${resumoPrecificacao(p)}</div>
     <div class="acoes"><button class="btn sec" onclick="fecharModal();abrirFormProduto('${p.id}')">Editar produto</button><button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
 }
 let formProd=null;
@@ -1389,7 +1421,7 @@ function desenharReceitaProduto(){
     const m=materialById(it.materialId);
     return `<div class="receita-item">
       <div class="receita-material"><button type="button" class="btn sec" onclick="abrirBuscaMaterial(${idx})" aria-label="Trocar material: ${esc(m?.nome||'não selecionado')}">${esc(m?.nome||'Escolher material')}</button>
-        <small class="muted">${m?fmtBRL(custoUnit(m))+' / '+esc(unidadeCurta(m.unidade)):'Selecione um material cadastrado.'}</small></div>
+        <small class="muted">${m?fmtCustoUnit(custoUnit(m))+' / '+esc(unidadeCurta(m.unidade)):'Selecione um material cadastrado.'}</small></div>
       <div class="campo receita-quantidade"><label>Quantidade${m?' ('+esc(unidadeCurta(m.unidade))+')':''}</label><input data-idx="${idx}" class="inpQtd" inputmode="decimal" value="${esc(String(it.qtd??1).replace('.',','))}" aria-label="Quantidade de ${esc(m?.nome||'material')}"></div>
       <div class="receita-custo"><span class="muted">Custo</span><strong class="receita-subtotal">${m?fmtBRL(custoUnit(m)*it.qtd):'—'}</strong></div>
       <button type="button" class="btn mini perigo btn-remover" onclick="remItemReceita(${idx})" aria-label="Remover ${esc(m?.nome||'material')} do produto">✕</button>
@@ -1425,7 +1457,7 @@ function abrirBuscaMaterial(idx=null){
     $('#contagemMaterialProduto').textContent=materiais.length+' de '+db.materiais.length+' materiais';
     lista.innerHTML=materiais.map(m=>`<button type="button" class="material-escolha" data-material-id="${esc(m.id)}">
       <span class="material-escolha-info"><strong>${esc(m.nome)}</strong><span class="muted">${esc(m.fornecedor||unidadeNome(m.unidade))}</span></span>
-      <span class="material-escolha-custo"><strong>${fmtBRL(custoUnit(m))}</strong><span class="muted">por ${esc(unidadeCurta(m.unidade))}</span></span></button>`).join('')||'<div class="vazio"><strong>Nenhum material encontrado</strong>Use “Novo material” para cadastrar e adicionar ao produto.</div>';
+      <span class="material-escolha-custo"><strong>${fmtCustoUnit(custoUnit(m))}</strong><span class="muted">por ${esc(unidadeCurta(m.unidade))}</span></span></button>`).join('')||'<div class="vazio"><strong>Nenhum material encontrado</strong>Use “Novo material” para cadastrar e adicionar ao produto.</div>';
   }
   lista.addEventListener('click',ev=>{
     const botao=ev.target.closest('[data-material-id]');if(!botao)return;
@@ -1440,16 +1472,11 @@ function addItemReceita(){abrirBuscaMaterial();}
 function remItemReceita(idx){formProd.itens.splice(idx,1);desenharReceitaProduto();previewProduto();}
 function previewProduto(){
   const el=$('#previewProd');if(!el)return;
-  const c=custoProduto(formProd);
-  const sug=c.total*(1+(formProd.lucroPct||0)/100);
-  el.innerHTML=`<div class="resumo-linha"><span>Materiais</span><span>${fmtBRL(c.materiais)}</span></div>
-  <div class="resumo-linha"><span>Trabalho e despesas · ${formProd.tempoMin||0} min</span><span>${fmtBRL(c.maoDeObra+c.custoFixo)}</span></div>
-  <div class="resumo-linha total"><span>Custo total</span><span>${fmtBRL(c.total)}</span></div>
-  <div class="resumo-linha"><span>Preço calculado</span><span>${fmtBRL(sug)}</span></div>
-  <div class="resumo-linha total"><span>Preço de venda</span><span>${fmtBRL(precoFinal(formProd))}</span></div>`;
+  el.innerHTML=resumoPrecificacao(formProd);
 }
 function salvarProduto(ev){
   ev.preventDefault();const f=ev.target;
+  if(![f.tempoMin,f.lucroPct,f.precoFinalManual].every(campo=>validarNumeroCampo(campo)))return false;
   if(!f.nome.value.trim()){f.nome.value='';f.nome.reportValidity();return false;}
   if(formProd.itens.some(i=>!materialById(i.materialId)||i.qtd<=0)){alert('Selecione um material e informe uma quantidade maior que zero em cada linha.');return false;}
   const itens=formProd.itens.filter(i=>i.materialId&&i.qtd>0);
@@ -1477,7 +1504,7 @@ function renderOrcamentos(){
       <td><button class="btn mini sec" onclick="verDoc('orcamento','${o.id}')">${esc(o.titulo||o.numero)}</button><div class="muted">${esc(o.numero)}</div></td>
       <td>${esc(o.cliente||'—')}</td><td>${fmtData(o.data)}</td>
       <td><span class="badge b-${o.status}">${STATUS_ORC[o.status]}</span></td>
-      <td class="num"><strong>${fmtBRL(o.total)}</strong></td>
+      <td class="num"><strong>${fmtBRL(totalDocumento(o))}</strong></td>
       <td class="num"><button class="btn mini neutro" onclick="verDoc('orcamento','${o.id}')">Ver orçamento</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">Nenhum orçamento nesta seleção.</td></tr>'}</tbody></table>`;
   $('#selFiltroOrc').setAttribute('aria-label','Filtrar orçamentos por situação');
   $('#selFiltroOrc').addEventListener('change',e=>{filtroOrc=e.target.value;render();});
@@ -1498,7 +1525,7 @@ function renderPedidos(){
       <td><button class="btn mini sec" onclick="verDoc('pedido','${p.id}')">${esc(p.titulo||p.numero)}</button><div class="muted">${esc(p.numero)}</div></td>
       <td>${esc(p.cliente||'—')}</td><td class="${p.prazo&&p.prazo<hojeISO()&&PROXIMO_PED[p.status]?'neg':''}">${p.prazo?fmtData(p.prazo):'<span class="muted">Sem prazo</span>'}</td>
       <td><span class="badge b-${p.status}">${STATUS_PED[p.status]}</span></td>
-      <td class="num"><strong>${fmtBRL(p.total)}</strong></td>
+      <td class="num"><strong>${fmtBRL(totalDocumento(p))}</strong></td>
       <td class="num">${PROXIMO_PED[p.status]?`<button class="btn mini sec" onclick="avancarPedido('${p.id}')">→ ${STATUS_PED[PROXIMO_PED[p.status]]}</button>`:''}
       <button class="btn mini neutro" onclick="verDoc('pedido','${p.id}')">Ver pedido</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">Nenhum pedido nesta seleção.</td></tr>'}</tbody></table>`;
   $('#selFiltroPed').setAttribute('aria-label','Filtrar pedidos por situação');
@@ -1518,7 +1545,9 @@ function abrirFormDoc(tipo,id){
   formDoc={tipo,d};
   desenharFormDoc();
 }
-function totalDoc(d){return d.itens.reduce((s,i)=>s+(i.qtd*i.precoUnit),0);}
+function subtotalDoc(item){return arredondarValor(parseNum(item.qtd)*parseNum(item.precoUnit));}
+function totalDoc(d){return somarValores((d.itens||[]).map(subtotalDoc));}
+function totalDocumento(d){return d.itens?.length?totalDoc(d):arredondarValor(d.total);}
 function capturaCabecalhoDoc(){
   const d=formDoc.d;
   const tit=$('#modal [name=titulo]'),cli=$('#modal [name=cliente]'),dat=$('#modal [name=data]'),obs=$('#modal [name=obs]'),prz=$('#modal [name=prazo]');
@@ -1533,8 +1562,8 @@ function desenharFormDoc(){
   const linhas=d.itens.map((it,idx)=>`<tr>
     <td>${esc(it.nome)}</td>
     <td style="width:90px"><input inputmode="decimal" value="${it.qtd}" data-idx="${idx}" class="docQtd" style="width:70px" ${travado?'disabled':''}></td>
-    <td style="width:120px"><input inputmode="decimal" value="${(Math.round(it.precoUnit*100)/100).toFixed(2).replace('.',',')}" data-idx="${idx}" class="docPreco" style="width:105px" ${travado?'disabled':''}></td>
-    <td class="num" id="subDoc${idx}">${fmtBRL(it.qtd*it.precoUnit)}</td>
+    <td style="width:120px"><input inputmode="decimal" value="${parseNum(it.precoUnit).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:12,useGrouping:false})}" data-idx="${idx}" class="docPreco" style="width:105px" ${travado?'disabled':''}></td>
+    <td class="num" id="subDoc${idx}">${fmtBRL(subtotalDoc(it))}</td>
     <td style="width:40px">${travado?'':`<button type="button" class="btn mini perigo" onclick="remItemDoc(${idx})">✕</button>`}</td></tr>`).join('');
   abrirModal(`<h3>${d.id?'Editar':'Novo'} ${titulo}${d.numero?' — '+esc(d.numero):''}</h3>
   <form onsubmit="return salvarDoc(event)">
@@ -1604,19 +1633,21 @@ function montaSugestoes(wrapSel,options,onPick){
 }
 function atualizaLinhaDoc(i){
   const it=formDoc.d.itens[i];
-  const sub=$('#subDoc'+i);if(sub)sub.textContent=fmtBRL(it.qtd*it.precoUnit);
+  const sub=$('#subDoc'+i);if(sub)sub.textContent=fmtBRL(subtotalDoc(it));
   $('#totalDoc').textContent=fmtBRL(totalDoc(formDoc.d));
 }
 function addProdPorId(prodId){
   const p=produtoById(prodId);if(!p)return;
-  const qtd=parseNum($('#qtdProdDoc').value)||1;
-  formDoc.d.itens.push({produtoId:p.id,nome:p.nome,qtd,precoUnit:Math.round(precoFinal(p)*100)/100});
+  if(!validarNumeroCampo($('#qtdProdDoc'),{positivo:true}))return;
+  const qtd=parseNum($('#qtdProdDoc').value);
+  formDoc.d.itens.push({produtoId:p.id,nome:p.nome,qtd,precoUnit:arredondarValor(precoFinal(p))});
   desenharFormDoc();
   sugereTituloDoc();
 }
 function addAvulsoDoc(){
   const nome=$('#nomeAvulso').value.trim();if(!nome){alert('Descreva o item.');return;}
-  const qtd=parseNum($('#qtdAvulso').value)||1,preco=parseNum($('#precoAvulso').value);
+  if(!validarNumeroCampo($('#qtdAvulso'),{positivo:true})||!validarNumeroCampo($('#precoAvulso')))return;
+  const qtd=parseNum($('#qtdAvulso').value),preco=parseNum($('#precoAvulso').value);
   formDoc.d.itens.push({produtoId:null,nome,qtd,precoUnit:preco});
   desenharFormDoc();
   sugereTituloDoc();
@@ -1629,6 +1660,7 @@ function sugereTituloDoc(){
 function remItemDoc(idx){formDoc.d.itens.splice(idx,1);desenharFormDoc();}
 function salvarDoc(ev){
   ev.preventDefault();const f=ev.target;const{tipo,d}=formDoc;
+  if(!$$('#modal .docQtd:not(:disabled)').every(campo=>validarNumeroCampo(campo,{positivo:true}))||!$$('#modal .docPreco:not(:disabled)').every(campo=>validarNumeroCampo(campo)))return false;
   d.titulo=f.titulo.value.trim();
   d.cliente=f.cliente.value.trim();d.data=f.data.value||hojeISO();d.obs=f.obs.value.trim();
   if(tipo==='pedido'&&f.prazo)d.prazo=f.prazo.value||'';
@@ -1657,7 +1689,7 @@ function verDoc(tipo,id){
   const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
   const ehOrc=tipo==='orcamento';
   const statusBadge=ehOrc?`<span class="badge b-${d.status}">${STATUS_ORC[d.status]}</span>`:`<span class="badge b-${d.status}">${STATUS_PED[d.status]}</span>`;
-  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="num">${i.qtd}</td><td class="num">${fmtBRL(i.precoUnit)}</td><td class="num">${fmtBRL(i.qtd*i.precoUnit)}</td></tr>`).join('');
+  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="num">${fmtQtd(i.qtd)}</td><td class="num">${fmtCustoUnit(i.precoUnit)}</td><td class="num">${fmtBRL(subtotalDoc(i))}</td></tr>`).join('');
   let botoes='',outrasAcoes='';
   if(ehOrc){
     if(d.status==='aberto'){
@@ -1687,7 +1719,7 @@ function verDoc(tipo,id){
     <p><strong>Cliente:</strong> ${esc(d.cliente||'—')} &nbsp; <strong>Data:</strong> ${fmtData(d.data)}${!ehOrc&&d.prazo?' &nbsp; <strong>Prazo:</strong> '+fmtData(d.prazo):''}</p>
     ${d.obs?`<p class="muted">${esc(d.obs)}</p>`:''}
     <table class="grid"><thead><tr><th>Item</th><th class="num">Quantidade</th><th class="num">Valor unitário</th><th class="num">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="resumo-linha total"><span>Total</span><span>${fmtBRL(d.total)}</span></div>
+    <div class="resumo-linha total"><span>Total</span><span>${fmtBRL(totalDocumento(d))}</span></div>
     ${prazoCampo}
     <details><summary>Outras ações</summary><div class="acoes">${outrasAcoes}</div></details>
     <div class="acoes">${botoes}</div>`);
@@ -1698,7 +1730,7 @@ function aprovarOrcamento(id){
   const faltas=faltasEstoque(o.itens);
   if(faltas.length&&!confirm('⚠ Estoque insuficiente para este pedido:\n'+faltas.map(x=>`• ${x.nome}: precisa de ${fmtQtd(x.precisa)} ${x.un}, tem ${fmtQtd(x.tem)}`).join('\n')+'\n\nAprovar e gerar pedido mesmo assim?'))return;
   o.status='aprovado';
-  const ped={id:uid('pd'),numero:'PED-'+String(db.seq.pedido++).padStart(4,'0'),orcamentoId:o.id,titulo:o.titulo,data:hojeISO(),cliente:o.cliente,obs:o.obs,itens:JSON.parse(JSON.stringify(o.itens)),total:o.total,status:'pendente',prazo:'',criadoEm:new Date().toISOString()};
+  const ped={id:uid('pd'),numero:'PED-'+String(db.seq.pedido++).padStart(4,'0'),orcamentoId:o.id,titulo:o.titulo,data:hojeISO(),cliente:o.cliente,obs:o.obs,itens:JSON.parse(JSON.stringify(o.itens)),total:totalDocumento(o),status:'pendente',prazo:'',criadoEm:new Date().toISOString()};
   db.pedidos.push(ped);saveDB();fecharModal();showView('pedidos');
   toast('Orçamento aprovado. Pedido '+ped.numero+' criado.');
 }
@@ -1734,9 +1766,9 @@ function mensagemOrcamento(d){
     '*Orçamento '+d.numero+'*\nData: '+fmtData(d.data)];
   if(d.titulo?.trim())blocos.push('*Projeto:* '+d.titulo.trim());
   d.itens.forEach(i=>blocos.push(
-    '*'+Number(i.qtd).toLocaleString('pt-BR',{maximumFractionDigits:6})+' × '+i.nome+'*\n'+
-    'Valor unitário: '+fmtBRL(i.precoUnit)+'\nSubtotal: '+fmtBRL(i.qtd*i.precoUnit)));
-  blocos.push('*Total do orçamento: '+fmtBRL(d.total)+'*');
+    '*'+fmtQtd(i.qtd)+' × '+i.nome+'*\n'+
+    'Valor unitário: '+fmtCustoUnit(i.precoUnit)+'\nSubtotal: '+fmtBRL(subtotalDoc(i))));
+  blocos.push('*Total do orçamento: '+fmtBRL(totalDocumento(d))+'*');
   const observacoes=(d.obs||'').trim();
   if(observacoes)blocos.push('*Observações:*\n\n'+observacoes.split(/\r?\n+/).map(linha=>linha.trim()).filter(Boolean).join('\n\n'));
   blocos.push('Se quiser ajustar algum detalhe ou tiver alguma dúvida, estou à disposição.',
@@ -1859,9 +1891,9 @@ function gerarPDFDocumento(tipo,d){
       const trecho=restante.splice(0,quantidade),alturaTrecho=Math.max(12,trecho.length*5+6);
       trecho.forEach((linha,i)=>escrever(linha,17,y+3+i*5));
       if(primeiraParte){
-        valorColuna(Number(item.qtd).toLocaleString('pt-BR',{maximumFractionDigits:6}),125,14,y+3);
-        valorColuna(fmtBRL(item.precoUnit),159,30,y+3);
-        valorColuna(fmtBRL(item.qtd*item.precoUnit),193,30,y+3);
+        valorColuna(fmtQtd(item.qtd),125,14,y+3);
+        valorColuna(fmtCustoUnit(item.precoUnit),159,30,y+3);
+        valorColuna(fmtBRL(subtotalDoc(item)),193,30,y+3);
       }
       primeiraParte=false;y+=alturaTrecho;regra(y);
       if(restante.length)novaPagina(true);
@@ -1871,8 +1903,8 @@ function gerarPDFDocumento(tipo,d){
   pdf.setFillColor('#f4e9ec');pdf.roundedRect(83,y,112,19,2,2,'F');
   escrever('Total do '+rotulo.toLowerCase(),87,y+6,{tamanho:10.5,cor:corMarca});
   let tamanhoTotal=18;estilo(tamanhoTotal,true);
-  while(pdf.getTextWidth(limpar(fmtBRL(d.total)))>58&&tamanhoTotal>10){tamanhoTotal--;estilo(tamanhoTotal,true);}
-  escrever(fmtBRL(d.total),191,y+4,{tamanho:tamanhoTotal,negrito:true,cor:corMarca,alinhar:'right'});y+=19;
+  while(pdf.getTextWidth(limpar(fmtBRL(totalDocumento(d))))>58&&tamanhoTotal>10){tamanhoTotal--;estilo(tamanhoTotal,true);}
+  escrever(fmtBRL(totalDocumento(d)),191,y+4,{tamanho:tamanhoTotal,negrito:true,cor:corMarca,alinhar:'right'});y+=19;
   if(d.obs){
     y+=9;garantir(15);
     escrever('OBSERVAÇÕES',margem,y,{tamanho:8.5,cor:corDestaque});y+=6;
@@ -1891,7 +1923,7 @@ function gerarPDFDocumento(tipo,d){
 function imprimirDoc(tipo,id){
   const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
   const titulo=tipo==='orcamento'?'ORÇAMENTO':'PEDIDO';
-  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="documento-valor">${Number(i.qtd).toLocaleString('pt-BR',{maximumFractionDigits:6})}</td><td class="documento-valor">${fmtBRL(i.precoUnit)}</td><td class="documento-valor">${fmtBRL(i.qtd*i.precoUnit)}</td></tr>`).join('');
+  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="documento-valor">${fmtQtd(i.qtd)}</td><td class="documento-valor">${fmtCustoUnit(i.precoUnit)}</td><td class="documento-valor">${fmtBRL(subtotalDoc(i))}</td></tr>`).join('');
   $('#printArea').innerHTML=`
     <header class="documento-cabecalho">
       <div class="documento-marca"><img class="documento-logo" src="${LOGO}" alt="">
@@ -1904,7 +1936,7 @@ function imprimirDoc(tipo,id){
       ${tipo==='pedido'&&d.prazo?`<p>Prazo de entrega: <strong>${fmtData(d.prazo)}</strong></p>`:''}</div>
     <table><colgroup><col style="width:52%"><col style="width:10%"><col style="width:19%"><col style="width:19%"></colgroup>
       <thead><tr><th>Descrição</th><th class="documento-valor">Qtd.</th><th class="documento-valor">Valor unitário</th><th class="documento-valor">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
-    <div class="documento-final"><div class="documento-total"><span>Total do ${tipo==='orcamento'?'orçamento':'pedido'}</span><strong>${fmtBRL(d.total)}</strong></div></div>
+    <div class="documento-final"><div class="documento-total"><span>Total do ${tipo==='orcamento'?'orçamento':'pedido'}</span><strong>${fmtBRL(totalDocumento(d))}</strong></div></div>
     ${d.obs?`<div class="documento-observacoes"><span class="documento-rotulo">Observações</span><p>${esc(d.obs)}</p></div>`:''}
     <p class="documento-rodape">${esc(mensagemFinalDocumento(tipo))}<br>Documento emitido em ${fmtData(hojeISO())}.</p>`;
   try{
@@ -1946,9 +1978,9 @@ function renderConfig(){
           <div class="acoes acoes-pagina"><button class="btn" type="submit">Salvar configurações</button></div>
         </form>
         <div class="painel" style="background:color-mix(in srgb,var(--accent) 6%,var(--panel));margin-top:10px">
-          <div class="resumo-linha"><span>Valor da hora de trabalho</span><strong>${fmtBRL(valorHoraTrabalho())}</strong></div>
-          <div class="resumo-linha"><span>Despesas por hora</span><strong>${fmtBRL(custoFixoHora())}</strong></div>
-          <div class="resumo-linha total"><span>Custo total por hora de produção</span><strong>${fmtBRL(valorHoraTrabalho()+custoFixoHora())}</strong></div>
+          <div class="resumo-linha"><span>Valor da hora de trabalho</span><strong>${fmtCustoUnit(valorHoraTrabalho())}</strong></div>
+          <div class="resumo-linha"><span>Despesas por hora</span><strong>${fmtCustoUnit(custoFixoHora())}</strong></div>
+          <div class="resumo-linha total"><span>Custo total por hora de produção</span><strong>${fmtCustoUnit(valorHoraTrabalho()+custoFixoHora())}</strong></div>
         </div>
       </div>
       <div class="painel">
@@ -1987,11 +2019,12 @@ function addCustoFixo(){
 }
 function salvarConfig(ev){
   ev.preventDefault();const f=ev.target;const c=db.config;
+  if(![f.salario,f.diasMes,f.horasDia,f.divisorCustoFixo,...$$('.cfValor')].every(campo=>validarNumeroCampo(campo)))return false;
   c.nomeLoja=f.nomeLoja.value.trim()||'PriArte Ateliê';c.contato=f.contato.value.trim();
-  c.salario=parseNum(f.salario.value);c.diasMes=parseNum(f.diasMes.value);c.horasDia=parseNum(f.horasDia.value);
-  c.divisorCustoFixo=parseNum(f.divisorCustoFixo.value)||720;
+  c.salario=arredondarValor(f.salario.value);c.diasMes=parseNum(f.diasMes.value);c.horasDia=parseNum(f.horasDia.value);
+  c.divisorCustoFixo=parseNum(f.divisorCustoFixo.value);
   const nomes=$$('.cfNome'),valores=$$('.cfValor');
-  c.custosFixos=nomes.map((n,i)=>({id:'cf'+i+'_'+Date.now().toString(36),nome:n.value.trim(),valor:parseNum(valores[i].value)})).filter(cf=>cf.nome);
+  c.custosFixos=nomes.map((n,i)=>({id:'cf'+i+'_'+Date.now().toString(36),nome:n.value.trim(),valor:arredondarValor(valores[i].value)})).filter(cf=>cf.nome);
   saveDB();render();toast('Configurações salvas.');return false;
 }
 function exportarBackup(){

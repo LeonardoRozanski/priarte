@@ -175,6 +175,19 @@ def main():
             assert 'Prazo de entrega: 20/10/2026' in text and 'PED-EXEMPLO' in text
             assert 'Agradeço sua confiança no meu trabalho!' in text
             passed.append('PDF de pedido preserva prazo, valores e agradecimento próprio')
+            page.evaluate("""() => {
+              const d=db.orcamentos[0];
+              d.itens=Array.from({length:3},()=>({nome:'Item fictício com valor fracionado',qtd:1,precoUnit:0.335}));
+              d.total=1.005;d.obs='Verificação fictícia dos centavos';
+            }""")
+            path = output / 'orcamento-centavos.pdf'
+            with page.expect_download() as download:
+                page.evaluate("imprimirDoc('orcamento','orc-teste')")
+            download.value.save_as(path)
+            _, text = text_pdf(path)
+            assert text.count('R$ 0,335') == 3 and text.count('R$ 0,34') == 3
+            assert 'R$ 1,02' in text
+            passed.append('PDF soma os subtotais exibidos e mantém preços unitários fracionados')
             # User-entered HTML is text in both exports.
             page.evaluate("db.orcamentos[0].cliente='<img src=x onerror=alert(1)>';db.orcamentos[0].obs='<script>exemplo</script>';abrirMensagemWhatsApp('orc-teste')")
             assert '<img src=x' in page.get_by_label('Mensagem do orçamento').input_value()
