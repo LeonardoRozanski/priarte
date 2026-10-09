@@ -103,8 +103,8 @@ de lucro é aplicado sobre o custo; o preço de venda opcional substitui o calcu
 | `supabase-sync.sql` | Banco privado por usuário e gravação com controle de versão |
 | `tests/` | Cenários de sincronização e verificação das permissões no PostgreSQL |
 | `servidor-priarte.ps1` | Servidor local — gera o link http para abrir no iPhone/Mac |
-| `extrair_planilha.ps1` | Script que extraiu o xlsx original (migração) |
-| `dados/`, planilhas e `extracao/` | Arquivos privados locais, excluídos do Git e da publicação |
+| `verificar_privacidade.py` | Bloqueia arquivos privados e dados iniciais no Git |
+| `dados/` | Backups e planilha original, privados e excluídos do Git |
 
 ## Verificação
 
@@ -121,10 +121,3 @@ node --input-type=module -e "import('./tests/sync.test.mjs').then(async m => con
 O teste `tests/supabase-sync.test.sql` usa um PostgreSQL descartável com os dois scripts
 em `/tmp`. Ele simula os papéis do Supabase e verifica conflitos e isolamento de usuários;
 não deve ser executado no projeto real.
-
-## Próximos passos (roadmap)
-
-- Clientes cadastrados com histórico
-- Envio do orçamento por WhatsApp com um clique
-- Relatórios de vendas e consumo de materiais
-- Publicar em link público (GitHub Pages) para abrir em qualquer lugar sem PC ligado

@@ -13,7 +13,7 @@ if (-not $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Adm
 }
 
 $porta = 8585
-$pastaApp = 'c:\Leonardo\papelaria\app'
+$pastaApp = Join-Path $PSScriptRoot 'app'
 
 # pega o IP REAL da rede (ignora adaptadores virtuais WSL/Hyper-V/VPN/Tailscale)
 $ip = (Get-NetIPAddress -AddressFamily IPv4 |
@@ -67,6 +67,12 @@ while ($listener.IsListening) {
   $req = $ctx.Request; $res = $ctx.Response
   $caminho = [System.Web.HttpUtility]::UrlDecode($req.Url.LocalPath.TrimStart('/'))
   if ([string]::IsNullOrEmpty($caminho)) { $caminho = 'index.html' }
+  # Sirva somente a interface. Planilhas, backups e caminhos externos são privados.
+  if ($caminho -notin @('index.html', 'sw.js')) {
+    $res.StatusCode = 404
+    $res.OutputStream.Close()
+    continue
+  }
   $arquivo = Join-Path $pastaApp $caminho
   if (Test-Path $arquivo -PathType Leaf) {
     $bytes = [System.IO.File]::ReadAllBytes($arquivo)
