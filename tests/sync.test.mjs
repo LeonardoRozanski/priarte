@@ -63,10 +63,10 @@ function makeDevice(cloud, { storage = new Storage(), cloudEnabled = true, handl
   }));
   const button = { textContent: '', title: '', setAttribute() {} };
   const events = {}; const timeouts = new Map(); let timerId = 0;
-  const device = { storage, button, messages: [], modal: '', rendering: 0, events, editing: false, handle };
+  const device = { storage, button, messages: [], modal: '', rendering: 0, events, editing: false, configForm: null, handle };
   const context = vm.createContext({
     console, localStorage: storage, Intl, URL, Blob, AbortController: TestAbortController, atob,
-    document: { hidden: false, activeElement: null, querySelector: selector => selector === '#btnSync' ? button : selector === '#overlay.aberto form' && device.editing ? {} : null, querySelectorAll: () => [], addEventListener: (name, fn) => { events[name] = fn; } },
+    document: { hidden: false, activeElement: null, querySelector: selector => selector === '#btnSync' ? button : selector === '#overlay.aberto form' && device.editing ? {} : selector === 'form[data-sync-editando="1"]' && device.configForm?.dataset.syncEditando === '1' ? device.configForm : null, querySelectorAll: () => [], addEventListener: (name, fn) => { events[name] = fn; } },
     navigator: {}, window: { addEventListener: (name, fn) => { events[name] = fn; } },
     setTimeout: (fn, ms) => { const id = ++timerId; timeouts.set(id, { fn, ms }); return id; },
     clearTimeout: id => timeouts.delete(id), setInterval: () => ++timerId, clearInterval() {},
@@ -132,6 +132,16 @@ export async function runTests() {
     assert.equal(pc.get('db.config.nomeLoja'), 'Loja no iPhone');
     assert.equal(pc.get('db.rev'), 2); assert.equal(iphone.get('db.rev'), 2);
     assert.equal(pc.get('syncEstado.pendente'), false);
+  });
+
+  await check('Campo de busca focado no PC não impede receber o estoque alterado no iPhone', async () => {
+    const cloud = new Cloud(), pc = makeDevice(cloud); await pc.open();
+    const iphone = makeDevice(cloud); await iphone.open();
+    const quantity = iphone.get('db.materiais[0].estoqueAtual') + 10;
+    iphone.context.quantity = quantity;
+    iphone.run('db.materiais[0].estoqueAtual=quantity;saveDB()'); await iphone.flushSave();
+    pc.run('document.activeElement={matches:()=>true,closest:()=>null}');
+    await pc.sync(); assert.equal(pc.get('db.materiais[0].estoqueAtual'), quantity);
   });
 
   await check('Mudança remota com revisão igual é detectada', async () => {
@@ -255,6 +265,27 @@ export async function runTests() {
     cloud.change(d => { d.config.nomeLoja = 'Remoto'; }); pc.editing = true; await pc.sync();
     assert.equal(pc.get('db.config.nomeLoja'), 'PriArte Ateliê');
     pc.editing = false; await pc.sync(); assert.equal(pc.get('db.config.nomeLoja'), 'Remoto');
+  });
+
+  await check('Configuração não salva é preservada e a sincronização informa que aguardou', async () => {
+    const cloud = new Cloud(), pc = makeDevice(cloud); await pc.open();
+    const form = { dataset: {} }; pc.configForm = form;
+    const field = { closest: () => form }; pc.events.input({ target: field });
+    cloud.change(d => { d.config.nomeLoja = 'Remoto'; }); await pc.run('sincronizarAgora()');
+    assert.equal(pc.get('db.config.nomeLoja'), 'PriArte Ateliê');
+    assert.equal(pc.get('syncAdiado'), true);
+    assert.ok(!pc.messages.slice(-1)[0].includes('Dados atualizados.'));
+    assert.ok(pc.messages.some(message => message.includes('Conclua')));
+    pc.configForm = null; await pc.sync();
+    assert.equal(pc.get('db.config.nomeLoja'), 'Remoto'); assert.equal(pc.get('syncAdiado'), false);
+  });
+
+  await check('Sincronização manual mostra o erro e a conexão usada pelo aparelho', async () => {
+    const cloud = new Cloud(), pc = makeDevice(cloud); await pc.open();
+    cloud.offline = true; await pc.run('sincronizarAgora()');
+    assert.ok(pc.modal.includes('Sem conexão com a nuvem'));
+    assert.ok(pc.modal.includes('https://teste.supabase.co')); assert.ok(pc.modal.includes(USER));
+    assert.ok(!pc.modal.includes('access-original')); assert.ok(!pc.modal.includes('refresh-original'));
   });
 
   await check('Arquivo lembrado pede autorização só no clique e carrega imediatamente', async () => {
