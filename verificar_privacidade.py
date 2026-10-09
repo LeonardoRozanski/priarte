@@ -37,7 +37,7 @@ def main():
     for nome in arquivos:
         if arquivo_privado(nome):
             erros.append('Arquivo privado no indice do Git: ' + nome)
-        if nome.startswith('docs/') and nome not in {'docs/index.html', 'docs/sw.js'}:
+        if nome.startswith('docs/') and nome not in {'docs/index.html', 'docs/sw.js', 'docs/.nojekyll'}:
             erros.append('Arquivo inesperado na pasta publicada: ' + nome)
     for nome in ['app/index.html', 'docs/index.html']:
         if nome in arquivos and not estrutura_vazia(git('show', ':' + nome).decode('utf-8')):
