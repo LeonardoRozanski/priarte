@@ -77,8 +77,10 @@ custo, fornecedor e ficha de consulta. A aba **Estoque** reúne compras, ajustes
 filtros de reposição. No produto, **Adicionar material → Novo material** permite
 cadastrar e vincular um material sem perder os campos já preenchidos.
 
-Na ficha do orçamento, **Salvar PDF** abre a impressão para salvar o documento,
-com fundo branco, itens, total e observações. **Mensagem WhatsApp** prepara um texto
+Na ficha do orçamento, **Salvar PDF** gera e baixa o documento diretamente no
+aparelho, com fundo branco, itens, total e observações, sem o endereço do sistema.
+O PDF funciona offline; a biblioteca jsPDF 4.2.1 (MIT) está incorporada no HTML.
+**Mensagem WhatsApp** prepara um texto
 que pode ser revisado, copiado ou aberto no WhatsApp para escolher o cliente.
 Os botões principais ficam no rodapé das janelas, enquanto os campos rolam;
 **Salvar configurações** também permanece visível acima da navegação do celular.
