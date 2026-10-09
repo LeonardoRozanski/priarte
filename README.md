@@ -48,8 +48,8 @@ Use o mesmo endereço e navegador a cada vez: dados e sessão ficam associados a
 - O HTML publicado começa vazio. Materiais, produtos, compras, orçamentos, pedidos,
   despesas e valores de precificação ficam no armazenamento privado do navegador e
   na origem de sincronização escolhida. Atualizar o aplicativo preserva esses dados.
-- Arquivos privados em `dados/`, `backups/`, `privado/`, JSON, CSV e planilhas estão
-  excluídos do Git. Nunca coloque esses registros dentro do HTML, do JavaScript ou
+- Arquivos privados em `dados/`, `backups/`, `privado/`, JSON, CSV, planilhas e PDFs
+  de clientes estão excluídos do Git. Nunca coloque esses registros dentro do HTML, do JavaScript ou
   da pasta publicada `docs`. Para receber seus dados em um aparelho novo, conecte
   a mesma conta ou restaure seu backup privado.
 - **Configurações → Cópia de segurança → Baixar / Restaurar backup**; guarde uma cópia no iCloud.
@@ -76,6 +76,12 @@ Em **Materiais**, a aba **Cadastro** mostra todos os materiais, com busca, unida
 custo, fornecedor e ficha de consulta. A aba **Estoque** reúne compras, ajustes e
 filtros de reposição. No produto, **Adicionar material → Novo material** permite
 cadastrar e vincular um material sem perder os campos já preenchidos.
+
+Na ficha do orçamento, **Salvar PDF** abre a impressão para salvar o documento,
+com fundo branco, itens, total e observações. **Mensagem WhatsApp** prepara um texto
+que pode ser revisado, copiado ou aberto no WhatsApp para escolher o cliente.
+Os botões principais ficam no rodapé das janelas, enquanto os campos rolam;
+**Salvar configurações** também permanece visível acima da navegação do celular.
 
 - Cada **compra** = um **lote** (data, quantidade, preço pago, frete, fornecedor)
 - A quantidade **soma no estoque**; o lote guarda seu custo próprio
@@ -130,3 +136,7 @@ não deve ser executado no projeto real.
 Com Python, Playwright e Chrome ou Chromium, execute `python tests/interface.test.py`.
 Os cenários verificam cadastro de materiais dentro do produto, preservação dos
 rascunhos, navegação entre modais, telas pequenas e grandes, usando apenas dados fictícios.
+
+Com Playwright e pypdf, execute `python tests/orcamento.test.py` para conferir os PDFs,
+orçamentos com várias páginas, mensagem de WhatsApp e ações fixas. `PRIARTE_QA_DIR`
+permite guardar as prévias em uma pasta privada fora do Git.

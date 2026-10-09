@@ -176,6 +176,15 @@
   .modal .fechar{float:none;width:44px;height:44px;margin:0;border-radius:50%;flex-shrink:0}
   .modal .fechar:hover{background:var(--accent-soft);color:var(--accent)}
   .modal-conteudo{padding:24px;overflow:auto;min-height:0;overscroll-behavior:contain;scroll-padding:16px}
+  .modal{max-height:calc(var(--altura-janela,100dvh) - var(--safe-top) - var(--safe-bottom) - 64px)}
+  .modal-form{display:flex;flex-direction:column;min-height:0;overflow:hidden;margin:0}
+  .modal-conteudo{flex:1}
+  .modal-rodape{flex-shrink:0;padding:14px 24px;border-top:1px solid var(--line);background:var(--panel);border-radius:0 0 var(--radius) var(--radius)}
+  .modal-rodape .acoes{margin:0}
+  .acoes-pagina{position:fixed;bottom:0;left:0;right:0;z-index:35;padding:12px max(24px,var(--safe-right)) calc(12px + var(--safe-bottom)) max(24px,var(--safe-left));margin:0;background:var(--panel);border-top:1px solid var(--line);justify-content:flex-end}
+  body.acoes-pagina-abertas main{padding-bottom:calc(110px + var(--safe-bottom))}
+  body.acoes-pagina-abertas .toast{bottom:calc(94px + var(--safe-bottom))}
+  .mensagem-whatsapp{min-height:300px;resize:vertical;line-height:1.6}
   .modal-conteudo>:first-child{margin-top:0}
   .modal-conteudo>:last-child{margin-bottom:0}
   body.modal-aberto{overflow:hidden}
@@ -276,6 +285,12 @@
     .modal-cabecalho{padding:12px 16px;gap:10px}
     .modal .modal-cabecalho h3{font-size:1.15rem}
     .modal-conteudo{padding:20px 16px}
+    .modal{max-height:calc(var(--altura-janela,100dvh) - var(--safe-top) - var(--safe-bottom) - 24px)}
+    .modal-rodape{padding:12px 16px}
+    .acoes-pagina{bottom:calc(66px + var(--safe-bottom));padding:10px max(16px,var(--safe-right)) 10px max(16px,var(--safe-left))}
+    .acoes-pagina .btn{width:100%}
+    body.acoes-pagina-abertas main{padding-bottom:calc(172px + var(--safe-bottom))}
+    body.acoes-pagina-abertas .toast{bottom:calc(154px + var(--safe-bottom))}
     .modal .formgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
     .modal .campo.largo{grid-column:1/-1}
     .modal .campo[style*=max-width]{max-width:none!important}
@@ -303,13 +318,37 @@
     .toast{bottom:calc(84px + var(--safe-bottom))}
   }
   @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+  @page{size:A4;margin:16mm 15mm}
   @media print{
+    html,body,body.claro,body.modal-aberto{background:#fff!important;color:#282327!important;margin:0!important;padding:0!important;height:auto!important;overflow:visible!important}
     body>*{display:none !important}
-    #printArea{display:block !important;font-family:Arial,sans-serif;color:#000;padding:20px}
-    #printArea h1{font-size:1.3rem;margin:0}
-    #printArea table{width:100%;border-collapse:collapse;margin-top:12px}
-    #printArea th,#printArea td{border:1px solid #999;padding:6px 8px;font-size:.9rem;text-align:left}
-    #printArea .tot{margin-top:10px;font-size:1.1rem;font-weight:bold;text-align:right}
+    #printArea{display:block!important;font:10.5pt/1.5 Arial,sans-serif;color:#282327;padding:0;overflow-wrap:anywhere;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+    #printArea *{box-sizing:border-box}
+    #printArea .documento-cabecalho{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding-bottom:18px;border-bottom:2px solid #b57282;break-inside:avoid}
+    #printArea .documento-marca{display:flex;gap:12px;align-items:center;min-width:0;flex:1}
+    #printArea .documento-logo{width:58px;height:58px;object-fit:cover;border-radius:50%;flex-shrink:0}
+    #printArea h1{font:700 19pt/1.2 Georgia,serif;margin:0 0 5px;color:#493338}
+    #printArea .documento-marca p{margin:3px 0;font-size:9pt;color:#66575b;white-space:pre-wrap}
+    #printArea .documento-identificacao{text-align:right;max-width:38%;flex-shrink:0}
+    #printArea .documento-tipo{font-size:11pt;font-weight:700;letter-spacing:1px;color:#805360}
+    #printArea .documento-numero{font-weight:700;margin:4px 0}
+    #printArea .documento-data{font-size:9pt;color:#66575b}
+    #printArea .documento-cliente{margin:22px 0 20px;break-inside:avoid}
+    #printArea .documento-rotulo{display:block;font-size:8.5pt;letter-spacing:.6px;text-transform:uppercase;color:#805360;margin-bottom:4px}
+    #printArea .documento-cliente strong{font-size:12pt}
+    #printArea .documento-cliente p{margin:8px 0 0}
+    #printArea table{width:100%;border-collapse:collapse;table-layout:fixed;margin:0}
+    #printArea thead{display:table-header-group}
+    #printArea tr{break-inside:avoid}
+    #printArea th{background:#f4e9ec;color:#493338;font-size:9pt;font-weight:700;text-align:left;padding:10px 8px;border-bottom:1px solid #d7b7bf}
+    #printArea td{padding:11px 8px;font-size:10pt;vertical-align:top;border-bottom:1px solid #e7dde0}
+    #printArea .documento-valor{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;overflow-wrap:normal}
+    #printArea .documento-final{break-inside:avoid;margin-top:20px}
+    #printArea .documento-total{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-left:auto;width:62%;padding:13px 16px;background:#f4e9ec;border-radius:6px;color:#493338}
+    #printArea .documento-total strong{font-size:18pt;white-space:nowrap}
+    #printArea .documento-observacoes{margin-top:22px}
+    #printArea .documento-observacoes p{margin:0;white-space:pre-wrap}
+    #printArea .documento-rodape{margin:26px 0 0;padding-top:12px;border-top:1px solid #e7dde0;font-size:9pt;color:#66575b;break-inside:avoid}
   }
 </style>
 </head>
@@ -361,7 +400,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.09-7';
+const APP_VERSAO='2026.10.09-8';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -522,6 +561,7 @@ function lucroProduto(p){return precoFinal(p)-custoProduto(p).total;}
 let view='dashboard';
 function showView(v){
   view=v;
+  document.body.classList.toggle('acoes-pagina-abertas',v==='config');
   $$('nav.tabs button').forEach(b=>{
     b.classList.toggle('ativo',b.dataset.view===v);
     if(b.dataset.view===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
@@ -590,12 +630,41 @@ function abrirModal(html,{empilhar=false}={}){
   else{modal.removeAttribute('aria-labelledby');}
   const fechar=document.createElement('button');fechar.type='button';fechar.className='fechar';fechar.setAttribute('aria-label','Fechar janela');fechar.textContent='✕';fechar.addEventListener('click',()=>fecharModal());cabecalho.append(fechar);
   modal.replaceChildren(cabecalho,conteudo);
+  fixarAcoesModal(modal,conteudo);
+  ajustarAlturaJanela();
   prepararInterface(modal);
   $('#overlay').classList.add('aberto');document.body.classList.add('modal-aberto');
   $('#overlay').scrollTop=0;
   $('main').inert=true;$('header.top').inert=true;
   modal.focus({preventScroll:true});
 }
+function fixarAcoesModal(modal,conteudo){
+  const form=Array.from(conteudo.children).find(el=>el.tagName==='FORM');
+  const acoes=[];
+  const ultima=conteudo.lastElementChild;
+  if(ultima?.classList.contains('acoes')){acoes.push(ultima);ultima.remove();}
+  if(form){
+    const ultimaForm=form.lastElementChild;
+    if(ultimaForm?.classList.contains('acoes')){acoes.unshift(ultimaForm);ultimaForm.remove();}
+    // Botões que estavam fora do formulário continuam sem enviar o formulário.
+    conteudo.querySelectorAll('button:not([type])').forEach(b=>{if(!form.contains(b))b.type='button';});
+    acoes.forEach(grupo=>grupo.querySelectorAll('button:not([type])').forEach(b=>b.type='button'));
+    const campos=document.createDocumentFragment();campos.append(...form.childNodes);
+    form.replaceWith(campos);form.classList.add('modal-form');
+    form.append(conteudo);modal.append(form);
+  }
+  if(acoes.length){
+    const rodape=document.createElement('div');rodape.className='modal-rodape';
+    const grupo=document.createElement('div');grupo.className='acoes';
+    acoes.forEach(a=>grupo.append(...a.childNodes));rodape.append(grupo);
+    (form||modal).append(rodape);
+  }
+}
+function ajustarAlturaJanela(){
+  document.documentElement.style.setProperty('--altura-janela',(window.visualViewport?.height||window.innerHeight)+'px');
+}
+window.visualViewport?.addEventListener('resize',ajustarAlturaJanela);
+window.addEventListener('resize',ajustarAlturaJanela);
 function fecharModal(){
   if(pilhaModal.length){
     const anterior=pilhaModal.pop(),modal=$('#modal');modal.replaceChildren(...anterior.nos);
@@ -1213,25 +1282,27 @@ function verDoc(tipo,id){
   const ehOrc=tipo==='orcamento';
   const statusBadge=ehOrc?`<span class="badge b-${d.status}">${STATUS_ORC[d.status]}</span>`:`<span class="badge b-${d.status}">${STATUS_PED[d.status]}</span>`;
   const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="num">${i.qtd}</td><td class="num">${fmtBRL(i.precoUnit)}</td><td class="num">${fmtBRL(i.qtd*i.precoUnit)}</td></tr>`).join('');
-  let botoes='';
+  let botoes='',outrasAcoes='';
   if(ehOrc){
     if(d.status==='aberto'){
-      botoes+=`<button class="btn" onclick="aprovarOrcamento('${d.id}')">✔ Aprovar e gerar pedido</button>
+      botoes+=`<button class="btn" onclick="aprovarOrcamento('${d.id}')">Aprovar orçamento</button>`;
+      outrasAcoes+=`
       <button class="btn neutro" onclick="statusOrcamento('${d.id}','perdido')">Marcar como não aprovado</button>`;
     }else if(d.status==='perdido'){
-      botoes+=`<button class="btn sec" onclick="statusOrcamento('${d.id}','aberto')">Reabrir</button>`;
+      outrasAcoes+=`<button class="btn sec" onclick="statusOrcamento('${d.id}','aberto')">Reabrir</button>`;
     }else if(d.status==='aprovado'){
       const ped=db.pedidos.find(p=>p.orcamentoId===d.id);
-      if(ped)botoes+=`<button class="btn sec" onclick="fecharModal();verDoc('pedido','${ped.id}')">Ver pedido ${esc(ped.numero)}</button>`;
+      if(ped)outrasAcoes+=`<button class="btn sec" onclick="fecharModal();verDoc('pedido','${ped.id}')">Ver pedido ${esc(ped.numero)}</button>`;
     }
-    botoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('orcamento','${d.id}')">Editar</button>
-    <button class="btn sec" onclick="imprimirDoc('orcamento','${d.id}')">Imprimir / PDF</button>
+    botoes+=`<button class="btn sec" onclick="imprimirDoc('orcamento','${d.id}')">Salvar PDF</button>
+    <button class="btn sec" onclick="abrirMensagemWhatsApp('${d.id}')">Mensagem WhatsApp</button>`;
+    outrasAcoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('orcamento','${d.id}')">Editar orçamento</button>
     <button class="btn perigo" onclick="excluirDoc('orcamento','${d.id}')">Excluir</button>`;
   }else{
     if(PROXIMO_PED[d.status])botoes+=`<button class="btn" onclick="avancarPedido('${d.id}',true)">→ ${STATUS_PED[PROXIMO_PED[d.status]]}</button>`;
-    if(d.status!=='cancelado'&&d.status!=='entregue')botoes+=`<button class="btn neutro" onclick="cancelarPedido('${d.id}')">Cancelar pedido</button>`;
-    botoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('pedido','${d.id}')">Editar</button>
-    <button class="btn sec" onclick="imprimirDoc('pedido','${d.id}')">Imprimir / PDF</button>
+    botoes+=`<button class="btn sec" onclick="imprimirDoc('pedido','${d.id}')">Salvar PDF</button>`;
+    if(d.status!=='cancelado'&&d.status!=='entregue')outrasAcoes+=`<button class="btn neutro" onclick="cancelarPedido('${d.id}')">Cancelar pedido</button>`;
+    outrasAcoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('pedido','${d.id}')">Editar pedido</button>
     <button class="btn perigo" onclick="excluirDoc('pedido','${d.id}')">Excluir</button>`;
   }
   const prazoCampo=!ehOrc?`<div class="campo" style="max-width:200px;margin-top:10px"><label>Prazo de entrega</label><input type="date" value="${d.prazo||''}" onchange="salvarPrazo('${d.id}',this.value)"></div>`:'';
@@ -1242,7 +1313,8 @@ function verDoc(tipo,id){
     <table class="grid"><thead><tr><th>Item</th><th class="num">Quantidade</th><th class="num">Valor unitário</th><th class="num">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
     <div class="resumo-linha total"><span>Total</span><span>${fmtBRL(d.total)}</span></div>
     ${prazoCampo}
-    <div class="acoes">${botoes}<button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
+    <details><summary>Outras ações</summary><div class="acoes">${outrasAcoes}</div></details>
+    <div class="acoes">${botoes}</div>`);
 }
 function statusOrcamento(id,st){const o=db.orcamentos.find(x=>x.id===id);o.status=st;saveDB();fecharModal();render();toast('Orçamento '+o.numero+': '+STATUS_ORC[st]);}
 function aprovarOrcamento(id){
@@ -1279,21 +1351,65 @@ function excluirDoc(tipo,id){
   else db.pedidos=db.pedidos.filter(p=>p.id!==id);
   saveDB();fecharModal();render();toast('Excluído.');
 }
-function imprimirDoc(tipo,id){
+function mensagemOrcamento(d){
+  const linhas=[d.cliente?'Olá, '+d.cliente+'!':'Olá!','',
+    'Segue seu orçamento de '+(db.config.nomeLoja||'PriArte Ateliê')+':',
+    '*Orçamento '+d.numero+'* · '+fmtData(d.data)];
+  if(d.titulo)linhas.push(d.titulo);
+  linhas.push('');
+  d.itens.forEach(i=>linhas.push('• '+Number(i.qtd).toLocaleString('pt-BR',{maximumFractionDigits:6})+' × '+i.nome+'\n  '+fmtBRL(i.precoUnit)+' cada · '+fmtBRL(i.qtd*i.precoUnit)));
+  linhas.push('','*Total: '+fmtBRL(d.total)+'*');
+  if(d.obs)linhas.push('','Observações:',d.obs);
+  linhas.push('','Se estiver tudo certo, responda por aqui para combinarmos os próximos passos.');
+  return linhas.join('\n');
+}
+function abrirMensagemWhatsApp(id){
+  const d=db.orcamentos.find(x=>x.id===id);if(!d)return;
+  abrirModal(`<h3>Mensagem para WhatsApp</h3>
+    <form onsubmit="return false">
+      <div class="campo"><label>Mensagem do orçamento</label><textarea id="mensagemWhatsApp" class="mensagem-whatsapp" oninput="atualizarLinkWhatsApp()">${esc(mensagemOrcamento(d))}</textarea>
+      <small>Revise a mensagem. No WhatsApp, escolha o cliente e envie.</small></div>
+      <p id="retornoMensagem" class="muted" role="status" aria-live="polite"></p>
+      <div class="acoes"><button class="btn" type="button" onclick="copiarMensagemWhatsApp()">Copiar mensagem</button>
+      <a id="linkWhatsApp" class="btn sec" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>
+      <button class="btn neutro" type="button" onclick="fecharModal()">Voltar</button></div>
+    </form>`,{empilhar:true});
+  atualizarLinkWhatsApp();
+}
+function atualizarLinkWhatsApp(){
+  const texto=$('#mensagemWhatsApp').value;
+  $('#linkWhatsApp').href='https://wa.me/?text='+encodeURIComponent(texto);
+}
+async function copiarMensagemWhatsApp(){
+  const campo=$('#mensagemWhatsApp'),retorno=$('#retornoMensagem');
+  let copiada=false;
+  try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(campo.value);copiada=true;}}catch(e){}
+  if(!copiada){campo.focus();campo.select();try{copiada=document.execCommand('copy');}catch(e){}}
+  retorno.textContent=copiada?'Mensagem copiada. Cole na conversa do cliente.':'Selecione e copie a mensagem acima.';
+}
+async function imprimirDoc(tipo,id){
   const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
   const titulo=tipo==='orcamento'?'ORÇAMENTO':'PEDIDO';
-  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td style="text-align:right">${i.qtd}</td><td style="text-align:right">${fmtBRL(i.precoUnit)}</td><td style="text-align:right">${fmtBRL(i.qtd*i.precoUnit)}</td></tr>`).join('');
+  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="documento-valor">${Number(i.qtd).toLocaleString('pt-BR',{maximumFractionDigits:6})}</td><td class="documento-valor">${fmtBRL(i.precoUnit)}</td><td class="documento-valor">${fmtBRL(i.qtd*i.precoUnit)}</td></tr>`).join('');
   $('#printArea').innerHTML=`
-    <img src="${LOGO}" alt="" style="height:90px;width:90px;border-radius:50%;object-fit:cover">
-    <h1 style="font-family:Georgia,serif">${esc(db.config.nomeLoja||'PriArte Ateliê')}</h1>
-    ${db.config.contato?`<p>${esc(db.config.contato)}</p>`:''}
-    <h2 style="font-size:1.05rem;margin:14px 0 4px">${titulo} ${esc(d.numero)}${d.titulo?' — '+esc(d.titulo):''}</h2>
-    <p>Cliente: <strong>${esc(d.cliente||'—')}</strong><br>Data: ${fmtData(d.data)}${tipo==='pedido'&&d.prazo?'<br>Prazo de entrega: '+fmtData(d.prazo):''}</p>
-    ${d.obs?`<p>Obs: ${esc(d.obs)}</p>`:''}
-    <table><thead><tr><th>Item</th><th style="text-align:right">Qtd.</th><th style="text-align:right">Preço unit.</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
-    <p class="tot">TOTAL: ${fmtBRL(d.total)}</p>
-    <p style="margin-top:26px;font-size:.85rem;color:#555">Documento gerado em ${fmtData(hojeISO())}.</p>`;
-  window.print();
+    <header class="documento-cabecalho">
+      <div class="documento-marca"><img class="documento-logo" src="${LOGO}" alt="">
+        <div><h1>${esc(db.config.nomeLoja||'PriArte Ateliê')}</h1><p>Papelaria personalizada</p>
+        ${db.config.contato?`<p>${esc(db.config.contato)}</p>`:''}</div></div>
+      <div class="documento-identificacao"><div class="documento-tipo">${titulo}</div><div class="documento-numero">${esc(d.numero)}</div><div class="documento-data">${fmtData(d.data)}</div></div>
+    </header>
+    <div class="documento-cliente"><span class="documento-rotulo">Preparado para</span><strong>${esc(d.cliente||'Cliente')}</strong>
+      ${d.titulo?`<p>${esc(d.titulo)}</p>`:''}
+      ${tipo==='pedido'&&d.prazo?`<p>Prazo de entrega: <strong>${fmtData(d.prazo)}</strong></p>`:''}</div>
+    <table><colgroup><col style="width:52%"><col style="width:10%"><col style="width:19%"><col style="width:19%"></colgroup>
+      <thead><tr><th>Descrição</th><th class="documento-valor">Qtd.</th><th class="documento-valor">Valor unitário</th><th class="documento-valor">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
+    <div class="documento-final"><div class="documento-total"><span>Total do ${tipo==='orcamento'?'orçamento':'pedido'}</span><strong>${fmtBRL(d.total)}</strong></div></div>
+    ${d.obs?`<div class="documento-observacoes"><span class="documento-rotulo">Observações</span><p>${esc(d.obs)}</p></div>`:''}
+    <p class="documento-rodape">${tipo==='orcamento'?'Obrigada pelo interesse no nosso trabalho! Entre em contato para confirmar os detalhes.':'Obrigada pela preferência!'}<br>Documento emitido em ${fmtData(hojeISO())}.</p>`;
+  await Promise.all(Array.from($('#printArea').querySelectorAll('img')).map(img=>img.decode?.().catch(()=>{})));
+  await document.fonts?.ready;
+  const tituloAnterior=document.title;document.title=(tipo==='orcamento'?'Orçamento':'Pedido')+' '+d.numero;
+  try{window.print();}finally{document.title=tituloAnterior;}
 }
 
 /* ================= configurações ================= */
@@ -1325,7 +1441,7 @@ function renderConfig(){
           <details><summary>Rateio das despesas na produção</summary>
             <div class="campo"><label>Horas para dividir as despesas do mês</label><input name="divisorCustoFixo" inputmode="numeric" value="${c.divisorCustoFixo}"><small>Define a parcela das despesas incluída no custo de cada hora de produção.</small></div>
           </details>
-          <div class="acoes"><button class="btn" type="submit">Salvar configurações</button></div>
+          <div class="acoes acoes-pagina"><button class="btn" type="submit">Salvar configurações</button></div>
         </form>
         <div class="painel" style="background:color-mix(in srgb,var(--accent) 6%,var(--panel));margin-top:10px">
           <div class="resumo-linha"><span>Valor da hora de trabalho</span><strong>${fmtBRL(valorHoraTrabalho())}</strong></div>
@@ -1809,7 +1925,6 @@ function abrirSync(){
         App: ${APP_VERSAO}</p>
       </details>
       <div class="acoes">
-        <button class="btn" onclick="sincronizarAgora()">Atualizar agora</button>
         <button class="btn sec" onclick="baixarCopiaDados()">Baixar backup</button>
         <button class="btn neutro" onclick="desconectarNuvem()">Desconectar</button>
       </div>`:`
@@ -1844,7 +1959,7 @@ function abrirSync(){
           <button class="btn sec" onclick="baixarCopiaDados()">Salvar cópia</button>
         </div>
       </details>`}
-    <div class="acoes"><button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
+    <div class="acoes">${conectado?'<button class="btn" onclick="sincronizarAgora()">Atualizar agora</button>':''}<button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
 }
 function baixarCopiaDados(){
   const blob=new Blob([JSON.stringify(payloadSync())],{type:'application/json'});

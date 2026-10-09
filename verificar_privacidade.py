@@ -8,7 +8,7 @@ from pathlib import PurePosixPath
 def arquivo_privado(nome):
     caminho = PurePosixPath(nome.lower())
     return (
-        caminho.suffix in {'.json', '.csv', '.xlsx', '.xls', '.sqlite', '.sqlite3', '.db'}
+        caminho.suffix in {'.json', '.csv', '.xlsx', '.xls', '.pdf', '.sqlite', '.sqlite3', '.db'}
         or caminho.parts[0] in {'dados', 'backups', 'privado', 'extracao'}
         or caminho.name.startswith('.env')
         or caminho.name == 'qrcode-iphone.png'

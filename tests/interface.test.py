@@ -177,7 +177,13 @@ def main():
                         page.evaluate(command)
                         assert page.evaluate("document.querySelector('.modal-conteudo').scrollWidth<=document.querySelector('.modal-conteudo').clientWidth"), (width, theme, command)
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+                        footer = page.locator('.modal-rodape')
+                        if footer.count():
+                            before = footer.bounding_box()
+                            assert before['y'] >= 47 and before['y'] + before['height'] <= height - 34, (width, theme, command, before)
                         page.locator('.modal-conteudo').evaluate('el=>el.scrollTop=el.scrollHeight')
+                        if footer.count():
+                            assert abs(footer.bounding_box()['y'] - before['y']) <= 1
                         if command == "abrirFormProduto('p-teste-1')":
                             page.get_by_role('button', name='Trocar material: Material fictício com nome muito longo para conferir a leitura da descrição completa em telas pequenas e no computador', exact=True).last.click()
                             saved_scroll = page.evaluate('pilhaModal[pilhaModal.length-1].scroll')
@@ -195,6 +201,25 @@ def main():
                         assert page.evaluate("!document.querySelector('main').inert")
                         layouts += 1
             passed.append(f'{layouts} verificações de modais em celular, paisagem, PC e dois temas')
+            page.set_viewport_size({'width': 390, 'height': 844})
+            page.evaluate('abrirSync()')
+            assert page.locator('#modal form button[type=submit]').count() == 1
+            assert page.locator('.modal-rodape button[type=submit]').count() == 1
+            assert page.locator('#modal form').evaluate("f=>f.elements.namedItem('email')!=null && f.elements.namedItem('senha')!=null")
+            page.get_by_role('button', name='Fechar', exact=True).click()
+            page.evaluate("showView('config')")
+            save = page.get_by_role('button', name='Salvar configurações', exact=True)
+            before = save.bounding_box()
+            navigation = page.locator('nav.tabs').bounding_box()
+            assert before['y'] + before['height'] <= navigation['y']
+            page.evaluate('window.scrollTo(0,document.body.scrollHeight)')
+            assert abs(save.bounding_box()['y'] - before['y']) <= 1
+            page.get_by_label('Nome do ateliê', exact=True).fill('Ateliê fictício atualizado')
+            save.click()
+            assert page.evaluate('db.config.nomeLoja') == 'Ateliê fictício atualizado'
+            page.evaluate("showView('dashboard')")
+            assert page.locator('.acoes-pagina').is_hidden()
+            passed.append('Rodapés fixos preservam formulários, conexão da nuvem e salvamento das configurações')
             fresh = browser.new_context(service_workers='block').new_page()
             fresh.goto(url, wait_until='networkidle')
             assert fresh.evaluate('db.materiais.length+db.produtos.length') == 0
