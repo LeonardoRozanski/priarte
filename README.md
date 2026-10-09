@@ -72,6 +72,11 @@ na barra inferior; Configurações fica na engrenagem do cabeçalho. As listas v
 cartões e os formulários se ajustam à tela. Instalação, tema, backup e ajustes de
 precificação ficam em Configurações.
 
+Em **Materiais**, a aba **Cadastro** mostra todos os materiais, com busca, unidade,
+custo, fornecedor e ficha de consulta. A aba **Estoque** reúne compras, ajustes e
+filtros de reposição. No produto, **Adicionar material → Novo material** permite
+cadastrar e vincular um material sem perder os campos já preenchidos.
+
 - Cada **compra** = um **lote** (data, quantidade, preço pago, frete, fornecedor)
 - A quantidade **soma no estoque**; o lote guarda seu custo próprio
 - **Custo médio ponderado** dos lotes alimenta a precificação
@@ -121,3 +126,7 @@ node --input-type=module -e "import('./tests/sync.test.mjs').then(async m => con
 O teste `tests/supabase-sync.test.sql` usa um PostgreSQL descartável com os dois scripts
 em `/tmp`. Ele simula os papéis do Supabase e verifica conflitos e isolamento de usuários;
 não deve ser executado no projeto real.
+
+Com Python, Playwright e Chrome ou Chromium, execute `python tests/interface.test.py`.
+Os cenários verificam cadastro de materiais dentro do produto, preservação dos
+rascunhos, navegação entre modais, telas pequenas e grandes, usando apenas dados fictícios.

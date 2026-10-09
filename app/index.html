@@ -166,14 +166,49 @@
   .acoes-celula{white-space:normal;min-width:160px}
   .acoes-celula .btn{margin:2px 0}
   .resumo-linha{gap:16px;padding:7px 0;align-items:baseline}
-  .resumo-linha>:last-child{flex-shrink:0;text-align:right}
+  .resumo-linha>:last-child{flex-shrink:0;text-align:right;max-width:65%;overflow-wrap:anywhere}
   .resumo-linha>:first-child{min-width:0;overflow-wrap:anywhere}
   .overlay{inset:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);background:none;padding:32px 16px;overscroll-behavior:contain;scroll-padding-block:20px}
   .overlay::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1}
-  .modal{padding:28px;overflow-wrap:anywhere}
-  .modal h3{font-size:1.25rem;line-height:1.35;padding-right:36px;margin:0 0 22px}
-  .modal .fechar{width:44px;height:44px;margin:-12px -12px 0 0;border-radius:50%}
+  .modal{padding:0;overflow-wrap:anywhere;width:100%;display:flex;flex-direction:column;max-height:calc(100vh - var(--safe-top) - var(--safe-bottom) - 64px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 64px)}
+  .modal-cabecalho{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid var(--line);flex-shrink:0}
+  .modal .modal-cabecalho h3{font-size:1.25rem;line-height:1.35;padding:0;margin:0;min-width:0}
+  .modal .fechar{float:none;width:44px;height:44px;margin:0;border-radius:50%;flex-shrink:0}
+  .modal .fechar:hover{background:var(--accent-soft);color:var(--accent)}
+  .modal-conteudo{padding:24px;overflow:auto;min-height:0;overscroll-behavior:contain;scroll-padding:16px}
+  .modal-conteudo>:first-child{margin-top:0}
+  .modal-conteudo>:last-child{margin-bottom:0}
   body.modal-aberto{overflow:hidden}
+  .catalogo-filtros{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .catalogo-filtros .busca{flex:1;min-width:200px}
+  .catalogo-filtros select{max-width:240px}
+  .catalogo-resumo{display:flex;gap:10px 24px;flex-wrap:wrap;margin:0 0 20px;color:var(--muted);font-size:.9rem}
+  .catalogo-resumo strong{color:var(--ink)}
+  .material-nome{display:grid;gap:3px}
+  .material-nome .muted{font-size:.78rem}
+  .form-secao{border-top:1px solid var(--line);margin-top:24px;padding-top:20px}
+  .form-secao h4{margin:0;font-size:1rem}
+  .secao-titulo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .secao-titulo p{margin:4px 0 0}
+  .receita-lista{display:grid;gap:12px}
+  .receita-item{display:grid;grid-template-columns:minmax(0,1fr) 120px 110px 44px;gap:14px;align-items:center;padding:16px;background:var(--input);border:1px solid var(--line);border-radius:12px;min-width:0}
+  .receita-material{display:grid;gap:5px;min-width:0}
+  .receita-material .btn{justify-content:flex-start;text-align:left;padding:0;background:none;color:var(--ink);white-space:normal;overflow-wrap:anywhere}
+  .receita-material .btn:hover{color:var(--accent)}
+  .receita-custo{display:grid;gap:6px;justify-items:end;font-size:.95rem}
+  .receita-custo .muted{font-size:.8rem}
+  .btn-remover{padding:8px;width:44px;min-width:44px}
+  .material-busca{display:flex;gap:10px;margin-bottom:16px}
+  .material-busca input{flex:1;width:100%}
+  .lista-materiais-escolha{display:grid;gap:8px;margin-top:12px}
+  .material-escolha{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--input);color:var(--ink);text-align:left;cursor:pointer;font:inherit;width:100%}
+  .material-escolha:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .material-escolha-info{display:grid;gap:5px;min-width:0;overflow-wrap:anywhere}
+  .material-escolha-custo{display:grid;gap:4px;text-align:right;flex-shrink:0;font-size:.9rem}
+  .material-escolha .muted{font-size:.8rem}
+  .resumo-produto{background:var(--input);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:20px}
+  .ficha-metricas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
+  .ficha-metricas>div{display:grid;gap:5px;padding:14px;background:var(--input);border-radius:10px;min-width:0}
   details{border-top:1px solid var(--line);padding:14px 0;margin-top:14px}
   details summary{cursor:pointer;font-size:.9rem;font-weight:500;min-height:30px}
   details[open] summary{margin-bottom:14px}
@@ -237,13 +272,31 @@
     .trabalho-fim{max-width:45%}
     .badge{font-size:.7rem;padding:4px 8px;white-space:normal}
     .overlay{padding:12px 10px}
-    .modal{padding:20px 16px;border-radius:16px;max-width:100%}
-    .modal h3{font-size:1.15rem}
+    .modal{padding:0;border-radius:16px;max-width:100%;max-height:calc(100vh - var(--safe-top) - var(--safe-bottom) - 24px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)}
+    .modal-cabecalho{padding:12px 16px;gap:10px}
+    .modal .modal-cabecalho h3{font-size:1.15rem}
+    .modal-conteudo{padding:20px 16px}
     .modal .formgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
     .modal .campo.largo{grid-column:1/-1}
     .modal .campo[style*=max-width]{max-width:none!important}
     .modal .acoes .btn{flex:1;min-width:100px}
     .modal .acoes .btn.mini{flex:initial}
+    .catalogo-filtros{gap:10px}
+    .catalogo-filtros .subtabs{width:100%}
+    .catalogo-filtros .subtabs button{flex:1;min-height:40px}
+    .catalogo-filtros input,.catalogo-filtros select{flex-basis:100%;max-width:100%;width:100%}
+    .catalogo-resumo{font-size:.82rem;gap:8px 16px}
+    .receita-item{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px;padding:14px;gap:12px}
+    .receita-material{grid-column:1/3;grid-row:1}
+    .receita-item .btn-remover{grid-column:3;grid-row:1}
+    .receita-quantidade{grid-column:1;grid-row:2}
+    .receita-custo{grid-column:2/4;grid-row:2}
+    .material-busca{flex-wrap:wrap}
+    .material-busca input{flex-basis:100%}
+    .material-busca .btn{width:100%}
+    .material-escolha{gap:10px;padding:12px}
+    .material-escolha-custo{max-width:42%}
+    .ficha-metricas{gap:10px}
     .resumo-linha{font-size:.88rem;gap:10px}
     .resumo-linha.total{font-size:1rem}
     .cf-linha{grid-template-columns:minmax(0,1fr) 88px 40px;gap:6px}
@@ -265,7 +318,7 @@
   <h1><img id="logoImg" alt="PriArte Ateliê"> <span id="tituloLoja">PriArte Ateliê</span></h1>
   <nav class="tabs" aria-label="Navegação principal">
     <button data-view="dashboard" class="ativo" aria-current="page"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></svg>Início</button>
-    <button data-view="materiais"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 4Z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>Estoque</button>
+    <button data-view="materiais"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 4Z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>Materiais</button>
     <button data-view="produtos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h11l4 4v14H5Z"/><path d="M15 3v5h5M9 12h7M9 16h5"/></svg>Produtos</button>
     <button data-view="orcamentos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg>Orçamentos</button>
     <button data-view="pedidos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 12l3 3 5-6"/></svg>Pedidos</button>
@@ -308,7 +361,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.09-6';
+const APP_VERSAO='2026.10.09-7';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -366,6 +419,9 @@ function migrarDB(persistir=true){
 
 /* ================= cálculos ================= */
 function fmtQtd(v){const n=Math.round((Number(v)||0)*100)/100;return String(n).replace('.',',');}
+const UNIDADES_MATERIAL=[['Folhas','Folhas','folha'],['Unidades','Unidades','un.'],['Metros(m)','Metros (m)','m'],['Centímetros(cm)','Centímetros (cm)','cm'],['Gramas(g)','Gramas (g)','g']];
+function unidadeNome(unidade){return UNIDADES_MATERIAL.find(u=>u[0]===unidade)?.[1]||unidade;}
+function unidadeCurta(unidade){return UNIDADES_MATERIAL.find(u=>u[0]===unidade)?.[2]||unidade;}
 /* custo unitário do material = custo médio ponderado dos lotes em estoque;
    sem estoque, usa o último lote conhecido (para a precificação não quebrar) */
 function custoUnit(m){
@@ -519,20 +575,35 @@ function prepararInterface(raiz){
 
 /* ================= modal ================= */
 let focoAntesModal=null;
-function abrirModal(html){
+const pilhaModal=[];
+function abrirModal(html,{empilhar=false}={}){
   const jaAberto=$('#overlay').classList.contains('aberto');
   if(!jaAberto)focoAntesModal=document.activeElement;
   const modal=$('#modal');
-  modal.innerHTML='<button class="fechar" onclick="fecharModal()" aria-label="Fechar janela">✕</button>'+html;
+  if(empilhar&&jaAberto){
+    pilhaModal.push({nos:Array.from(modal.childNodes),scroll:modal.querySelector('.modal-conteudo')?.scrollTop||0,foco:document.activeElement});
+  }else{pilhaModal.length=0;}
+  const conteudo=document.createElement('div');conteudo.className='modal-conteudo';conteudo.innerHTML=html;
+  const titulo=conteudo.querySelector('h3');
+  const cabecalho=document.createElement('div');cabecalho.className='modal-cabecalho';
+  if(titulo){titulo.id='tituloModal';cabecalho.append(titulo);modal.setAttribute('aria-labelledby','tituloModal');}
+  else{modal.removeAttribute('aria-labelledby');}
+  const fechar=document.createElement('button');fechar.type='button';fechar.className='fechar';fechar.setAttribute('aria-label','Fechar janela');fechar.textContent='✕';fechar.addEventListener('click',()=>fecharModal());cabecalho.append(fechar);
+  modal.replaceChildren(cabecalho,conteudo);
   prepararInterface(modal);
-  const titulo=modal.querySelector('h3');
-  if(titulo){titulo.id='tituloModal';modal.setAttribute('aria-labelledby','tituloModal');}
   $('#overlay').classList.add('aberto');document.body.classList.add('modal-aberto');
-  if(!jaAberto)$('#overlay').scrollTop=0;
+  $('#overlay').scrollTop=0;
   $('main').inert=true;$('header.top').inert=true;
   modal.focus({preventScroll:true});
 }
 function fecharModal(){
+  if(pilhaModal.length){
+    const anterior=pilhaModal.pop(),modal=$('#modal');modal.replaceChildren(...anterior.nos);
+    if(modal.querySelector('h3'))modal.setAttribute('aria-labelledby','tituloModal');else modal.removeAttribute('aria-labelledby');
+    const conteudo=modal.querySelector('.modal-conteudo');if(conteudo)conteudo.scrollTop=anterior.scroll;
+    if(anterior.foco?.isConnected)anterior.foco.focus({preventScroll:true});else modal.focus({preventScroll:true});
+    return;
+  }
   $('#overlay').classList.remove('aberto');$('#modal').innerHTML='';document.body.classList.remove('modal-aberto');
   $('main').inert=false;$('header.top').inert=false;
   if(focoAntesModal?.isConnected)focoAntesModal.focus({preventScroll:true});
@@ -573,7 +644,7 @@ function renderDashboard(){
       <div class="painel"><div class="painel-titulo"><h3>Fila de produção</h3><button class="link-acao" onclick="showView('pedidos')">Ver pedidos →</button></div>${listaResumoPed()}</div>
       <div class="painel"><div class="painel-titulo"><h3>Orçamentos em aberto</h3><button class="link-acao" onclick="showView('orcamentos')">Ver todos →</button></div>${listaResumoOrc()}</div>
     </div>
-    ${alertas.length?`<div class="painel"><div class="painel-titulo"><h3>Reposição de materiais</h3><button class="link-acao" onclick="showView('materiais')">Ver estoque →</button></div>${listaAlertas(alertas)}</div>`:''}`;
+    ${alertas.length?`<div class="painel"><div class="painel-titulo"><h3>Reposição de materiais</h3><button class="link-acao" onclick="abrirEstoqueMateriais()">Ver estoque →</button></div>${listaAlertas(alertas)}</div>`:''}`;
 }
 function listaAlertas(alertas){
   if(!alertas.length)return '<p class="muted">Estoque em dia ✓ — nenhum material abaixo do mínimo.</p>';
@@ -598,62 +669,107 @@ function listaResumoPed(){
 }
 
 /* ================= estoque / materiais ================= */
-let filtroMat='';
+let filtroMat='',abaMat='cadastro',situacaoMat='todos';
+function abrirEstoqueMateriais(){abaMat='estoque';showView('materiais');}
+function trocarAbaMateriais(aba){abaMat=aba;render();}
+function textoBusca(texto){return String(texto||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
 function renderMateriais(){
-  const f=filtroMat.toLowerCase();
-  const lista=db.materiais.filter(m=>!f||m.nome.toLowerCase().includes(f)||(m.fornecedor||'').toLowerCase().includes(f));
-  const nAlertas=materiaisEmAlerta().length;
-  $('#view-materiais').innerHTML=`
-    <div class="barra"><h2>Estoque</h2>
-      <input class="busca" id="buscaMat" placeholder="Buscar material ou fornecedor..." value="${esc(filtroMat)}">
-      <div class="spacer"></div><button class="btn" onclick="abrirFormMaterial()">+ Novo material</button>
-    </div>
-    ${nAlertas?`<p class="muted">${nAlertas} ${nAlertas===1?'material precisa':'materiais precisam'} de reposição.</p>`:''}
-    <table class="grid"><thead><tr><th>Material</th><th class="num">Estoque disponível</th><th class="num">Custo por unidade</th><th class="secundaria">Fornecedor</th><th class="num secundaria">Valor em estoque</th><th></th></tr></thead>
-    <tbody>${lista.map(m=>{
-      const ctrl=m.controlaEstoque!==false;
-      const[stClass,stLabel]=statusEstoque(m);
-      const est=m.estoqueAtual||0;
-      return `<tr>
-      <td><button class="btn mini sec" onclick="abrirLotes('${m.id}')">${esc(m.nome)}</button><div><span class="badge b-${stClass}">${stLabel}</span></div></td>
-      <td class="num">${ctrl?`<strong class="${est<0?'neg':''}">${fmtQtd(est)}</strong> <span class="muted">${esc(m.unidade)}</span>`:'<span class="muted">—</span>'}</td>
+  const f=textoBusca(filtroMat.trim()),estoque=abaMat==='estoque';
+  const lista=db.materiais.filter(m=>{
+    if(f&&!textoBusca(m.nome+' '+(m.fornecedor||'')).includes(f))return false;
+    if(!estoque||situacaoMat==='todos')return true;
+    const [status]=statusEstoque(m);
+    return situacaoMat==='alerta'?['baixo','zerado'].includes(status):status===situacaoMat;
+  }).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base',numeric:true}));
+  const controlados=db.materiais.filter(m=>m.controlaEstoque!==false),nAlertas=materiaisEmAlerta().length;
+  const linhas=lista.map(m=>{
+    const ctrl=m.controlaEstoque!==false,[stClass,stLabel]=statusEstoque(m),est=m.estoqueAtual||0;
+    if(!estoque)return `<tr>
+      <td><button class="btn mini sec" onclick="fichaMaterial('${m.id}')">${esc(m.nome)}</button></td>
+      <td>${esc(unidadeNome(m.unidade))}</td><td class="num">${fmtBRL(custoUnit(m))}</td>
+      <td class="muted">${esc(m.fornecedor||'Não informado')}</td>
+      <td class="num"><button class="btn mini neutro" onclick="abrirFormMaterial('${m.id}')">Editar</button>
+      <button class="btn mini perigo" onclick="excluirMaterial('${m.id}')">✕</button></td></tr>`;
+    return `<tr>
+      <td><button class="btn mini sec" onclick="fichaMaterial('${m.id}')">${esc(m.nome)}</button><div><span class="badge b-${stClass}">${stLabel}</span></div></td>
+      <td class="num">${ctrl?`<strong class="${est<0?'neg':''}">${fmtQtd(est)}</strong> <span class="muted">${esc(m.unidade)}</span>`:'<span class="muted">Sem estoque físico</span>'}</td>
+      <td class="num">${ctrl?fmtQtd(m.estoqueMinimo||0):'—'}</td>
       <td class="num">${fmtBRL(custoUnit(m))}</td>
-      <td class="muted">${esc(m.fornecedor||'')}</td>
-      <td class="num">${ctrl?`<span class="${valorEmEstoque(m)<0?'neg':''}">${fmtBRL(valorEmEstoque(m))}</span>`:'<span class="muted">—</span>'}</td>
+      <td class="num">${ctrl?fmtBRL(valorEmEstoque(m)):'—'}</td>
       <td class="num">${ctrl?`<button class="btn mini sec" onclick="abrirCompra('${m.id}')">+ Compra</button>
       <button class="btn mini neutro" onclick="abrirAjuste('${m.id}')">Ajustar</button>`:''}
-      <button class="btn mini neutro" onclick="abrirFormMaterial('${m.id}')">Editar</button>
-      <button class="btn mini perigo" onclick="excluirMaterial('${m.id}')">✕</button></td></tr>`;}).join('')||'<tr><td colspan="6" class="muted">Nenhum material encontrado.</td></tr>'}</tbody></table>
+      <button class="btn mini neutro" onclick="abrirLotes('${m.id}')">Compras</button></td></tr>`;
+  }).join('');
+  $('#view-materiais').innerHTML=`
+    <div class="barra"><h2>Materiais</h2><div class="spacer"></div><button class="btn" onclick="abrirFormMaterial()">+ Novo material</button></div>
+    <div class="catalogo-resumo"><span><strong>${db.materiais.length}</strong> cadastrados</span>
+      <span><strong>${nAlertas}</strong> para repor</span>${estoque?`<span>Valor em estoque: <strong>${fmtBRL(controlados.reduce((s,m)=>s+valorEmEstoque(m),0))}</strong></span>`:''}</div>
+    <div class="catalogo-filtros">
+      <div class="subtabs" aria-label="Visualização dos materiais">
+        <button class="${estoque?'':'ativo'}" aria-pressed="${!estoque}" onclick="trocarAbaMateriais('cadastro')">Cadastro</button>
+        <button class="${estoque?'ativo':''}" aria-pressed="${estoque}" onclick="trocarAbaMateriais('estoque')">Estoque</button>
+      </div>
+      <input class="busca" id="buscaMat" placeholder="Buscar material ou fornecedor..." value="${esc(filtroMat)}">
+      ${estoque?`<select aria-label="Situação do estoque" onchange="situacaoMat=this.value;render()">${[['todos','Todos os materiais'],['alerta','Para repor'],['zerado','Esgotados'],['ok','Disponíveis'],['semcontrole','Sem estoque físico']].map(([valor,nome])=>`<option value="${valor}" ${valor===situacaoMat?'selected':''}>${nome}</option>`).join('')}</select>`:''}
+    </div>
+    <table class="grid"><thead><tr>${estoque?'<th>Material</th><th class="num">Disponível</th><th class="num">Mínimo</th><th class="num">Custo por unidade</th><th class="num">Valor em estoque</th><th></th>':'<th>Material</th><th>Unidade</th><th class="num">Custo por unidade</th><th>Fornecedor</th><th></th>'}</tr></thead>
+    <tbody>${linhas||`<tr><td colspan="${estoque?6:5}" class="muted">${db.materiais.length?'Nenhum material corresponde à busca.':'Nenhum material cadastrado. Use “Novo material” para começar.'}</td></tr>`}</tbody></table>
     <p class="contagem">${lista.length} de ${db.materiais.length} materiais</p>`;
   const b=$('#buscaMat');b.addEventListener('input',()=>{filtroMat=b.value;render();const nb=$('#buscaMat');nb.focus();nb.setSelectionRange(nb.value.length,nb.value.length);});
 }
-function abrirFormMaterial(id){
-  const m=id?materialById(id):{nome:'',fornecedor:'',unidade:'Folhas',controlaEstoque:true,custoUnitario:0,estoqueMinimo:0};
+function fichaMaterial(id){
+  const m=materialById(id);if(!m)return;
+  const ctrl=m.controlaEstoque!==false,[stClass,stLabel]=statusEstoque(m);
+  const produtos=db.produtos.filter(p=>(p.itens||[]).some(i=>i.materialId===id));
+  abrirModal(`<h3>${esc(m.nome)}</h3>
+    <span class="badge b-${stClass}">${stLabel}</span>
+    <div class="ficha-metricas">
+      <div><span class="muted">Custo por unidade</span><strong>${fmtBRL(custoUnit(m))} / ${esc(unidadeCurta(m.unidade))}</strong></div>
+      <div><span class="muted">Disponível</span><strong>${ctrl?fmtQtd(m.estoqueAtual||0)+' '+esc(m.unidade):'Sem estoque físico'}</strong></div>
+    </div>
+    <div class="resumo-linha"><span>Fornecedor</span><span>${esc(m.fornecedor||'Não informado')}</span></div>
+    ${ctrl?`<div class="resumo-linha"><span>Estoque mínimo</span><span>${fmtQtd(m.estoqueMinimo||0)} ${esc(m.unidade)}</span></div>
+    <div class="resumo-linha"><span>Valor em estoque</span><span>${fmtBRL(valorEmEstoque(m))}</span></div>`:''}
+    <section class="form-secao"><h4>Usado em ${produtos.length} ${produtos.length===1?'produto':'produtos'}</h4>
+      ${produtos.length?`<div class="lista-trabalhos">${produtos.map(p=>`<button class="trabalho" onclick="fichaProduto('${p.id}')"><span class="trabalho-nome">${esc(p.nome)}</span></button>`).join('')}</div>`:'<p class="muted">Ainda não está vinculado a um produto.</p>'}
+    </section>
+    <div class="acoes"><button class="btn" onclick="abrirFormMaterial('${id}')">Editar material</button>
+      ${ctrl?`<button class="btn sec" onclick="abrirCompra('${id}')">+ Compra</button>`:''}
+      <button class="btn neutro" onclick="abrirLotes('${id}')">Histórico de compras</button></div>`);
+}
+function abrirFormMaterial(id,opcoes={}){
+  const m=id?materialById(id):{nome:opcoes.nomeInicial||'',fornecedor:'',unidade:'Folhas',controlaEstoque:true,custoUnitario:0,estoqueMinimo:0};
+  if(!m)return;
   abrirModal(`<h3>${id?'Editar':'Novo'} material</h3>
   <form onsubmit="return salvarMaterial(event,'${id||''}')">
     <div class="formgrid">
       <div class="campo largo"><label>Nome do material</label><input name="nome" required value="${esc(m.nome)}"></div>
       <div class="campo largo"><label>Fornecedor padrão</label><input name="fornecedor" value="${esc(m.fornecedor||'')}"></div>
       <div class="campo"><label>Unidade</label><select name="unidade">
-        ${['Folhas','Unidades','Metros(m)','Centímetros(cm)','Gramas(g)'].map(u=>`<option value="${u}" ${u===m.unidade?'selected':''}>${u}</option>`).join('')}
-        ${['Folhas','Unidades','Metros(m)','Centímetros(cm)','Gramas(g)'].includes(m.unidade)?'':`<option value="${esc(m.unidade)}" selected>${esc(m.unidade)}</option>`}
+        ${UNIDADES_MATERIAL.map(([valor,nome])=>`<option value="${valor}" ${valor===m.unidade?'selected':''}>${nome}</option>`).join('')}
+        ${UNIDADES_MATERIAL.some(u=>u[0]===m.unidade)?'':`<option value="${esc(m.unidade)}" selected>${esc(m.unidade)}</option>`}
       </select></div>
       <div class="campo"><label>Estoque mínimo</label><input name="estoqueMinimo" inputmode="decimal" value="${m.estoqueMinimo||0}"><small>Alerta de reposição ao atingir esta quantidade.</small></div>
       <div class="campo"><label>Custo de referência (R$ / unidade)</label><input name="custoUnitario" inputmode="decimal" value="${m.custoUnitario||0}"><small>Usado quando não há compras disponíveis.</small></div>
       <div class="campo largo"><label style="flex-direction:row;display:flex;align-items:center;gap:8px"><input type="checkbox" name="controlaEstoque" ${m.controlaEstoque!==false?'checked':''} style="width:auto"> Controlar estoque deste material</label></div>
     </div>
-    <p class="muted">Para serviços como impressão, desative o controle de estoque e informe o custo de referência.</p>
-    <div class="acoes"><button class="btn" type="submit">Salvar</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
-  </form>`);
+    <p class="muted">Serviços, como impressão, podem ser cadastrados sem estoque físico.</p>
+    <div class="acoes"><button class="btn" type="submit">Salvar material</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+  </form>`,{empilhar:!!opcoes.empilhar});
+  if(opcoes.aoSalvar)$('#modal form').onsubmit=ev=>salvarMaterial(ev,id,opcoes.aoSalvar);
 }
-function salvarMaterial(ev,id){
+function salvarMaterial(ev,id,aoSalvar){
   ev.preventDefault();const f=ev.target;
   const dados={nome:f.nome.value.trim(),fornecedor:f.fornecedor.value.trim(),unidade:f.unidade.value.trim()||'Unidades',
     estoqueMinimo:parseNum(f.estoqueMinimo.value),custoUnitario:parseNum(f.custoUnitario.value),
     controlaEstoque:!!f.controlaEstoque.checked};
-  if(id){Object.assign(materialById(id),dados);}
-  else{db.materiais.push(Object.assign({id:uid('m'),estoqueAtual:0},dados));}
-  saveDB();fecharModal();render();toast('Material salvo.');return false;
+  if(!dados.nome){f.nome.value='';f.nome.reportValidity();return false;}
+  let material;
+  if(id){material=Object.assign(materialById(id),dados);}
+  else{material=Object.assign({id:uid('m'),estoqueAtual:0},dados);db.materiais.push(material);}
+  saveDB();fecharModal();render();
+  if(aoSalvar)aoSalvar(material);
+  toast(aoSalvar?'Material cadastrado e adicionado ao produto.':'Material salvo.');return false;
 }
 function excluirMaterial(id){
   const usado=db.produtos.filter(p=>(p.itens||[]).some(i=>i.materialId===id));
@@ -798,54 +914,85 @@ function abrirFormProduto(id){
 }
 function desenharFormProduto(){
   const fp=formProd;
-  const pfInp=$('#modal [name=precoFinalManual]');
-  if(pfInp)fp.precoFinalManual=pfInp.value.trim()?parseNum(pfInp.value):null;
-  const matOptions=db.materiais.map(m=>({id:m.id,rotulo:m.nome,extra:fmtBRL(custoUnit(m))+'/'+m.unidade}));
-  const linhas=fp.itens.map((it,idx)=>{
-    const m=it.materialId?materialById(it.materialId):null;
-    return `<tr>
-    <td><button type="button" class="btn mini sec" onclick="abrirBuscaMaterial(${idx})" title="Trocar material">${m?esc(m.nome):'— escolher material —'}</button></td>
-    <td style="width:110px"><input data-idx="${idx}" class="inpQtd" inputmode="decimal" value="${it.qtd}" style="width:90px">${m?`<small class="muted">${esc(m.unidade)}</small>`:''}</td>
-    <td class="num">${m?fmtBRL(custoUnit(m)*it.qtd):'—'}</td>
-    <td style="width:40px"><button type="button" class="btn mini perigo" onclick="remItemReceita(${idx})">✕</button></td></tr>`;}).join('');
   abrirModal(`<h3>${fp.id?'Editar':'Novo'} produto</h3>
   <form onsubmit="return salvarProduto(event)">
     <div class="formgrid">
       <div class="campo largo"><label>Nome do produto</label><input name="nome" required value="${esc(fp.nome)}" oninput="formProd.nome=this.value"></div>
-      <div class="campo largo"><label>Observações</label><input name="obs" value="${esc(fp.obs)}" oninput="formProd.obs=this.value"></div>
+      <div class="campo largo"><label>Observações</label><textarea name="obs" rows="2" oninput="formProd.obs=this.value">${esc(fp.obs)}</textarea></div>
+    </div>
+    <section class="form-secao">
+      <div class="secao-titulo"><div><h4>Materiais</h4><p class="muted">Quantidades para produzir 1 unidade.</p></div>
+        <button type="button" class="btn sec" onclick="addItemReceita()">+ Adicionar material</button></div>
+      <div class="receita-lista" id="tbReceita"></div>
+    </section>
+    <section class="form-secao">
+      <div class="secao-titulo"><h4>Tempo e preço</h4></div>
+      <div class="formgrid">
       <div class="campo"><label>Tempo por unidade (min)</label><input name="tempoMin" inputmode="numeric" value="${fp.tempoMin}" oninput="formProd.tempoMin=parseNum(this.value);previewProduto()"></div>
       <div class="campo"><label>Lucro sobre o custo (%)</label><input name="lucroPct" inputmode="decimal" value="${fp.lucroPct}" oninput="formProd.lucroPct=parseNum(this.value);previewProduto()"></div>
-      <div class="campo largo"><label>Preço de venda (opcional)</label><input name="precoFinalManual" inputmode="decimal" placeholder="Usar preço calculado" value="${fp.precoFinalManual==null?'':fp.precoFinalManual}"><small>Em branco, usa o preço calculado.</small></div>
-    </div>
-    <h4 style="margin:8px 0 14px">Materiais para produzir 1 unidade</h4>
-    <table class="grid"><thead><tr><th>Material</th><th>Quantidade</th><th class="num">Custo</th><th></th></tr></thead><tbody id="tbReceita">${linhas||'<tr><td colspan="4" class="muted">Adicione os materiais usados neste produto.</td></tr>'}</tbody></table>
-    <div class="acoes" style="margin-top:8px"><button type="button" class="btn mini neutro" onclick="addItemReceita()">+ Adicionar material</button></div>
-    <div class="painel" id="previewProd" style="margin-top:12px"></div>
-    <div class="acoes"><button class="btn" type="submit">Salvar</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+      <div class="campo largo"><label>Preço de venda (opcional)</label><input name="precoFinalManual" inputmode="decimal" placeholder="Usar preço calculado" value="${fp.precoFinalManual==null?'':fp.precoFinalManual}" oninput="formProd.precoFinalManual=this.value.trim()?parseNum(this.value):null;previewProduto()"><small>Em branco, usa o preço calculado.</small></div>
+      </div>
+      <div class="resumo-produto" id="previewProd" aria-live="polite"></div>
+    </section>
+    <div class="acoes"><button class="btn" type="submit">Salvar produto</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
   </form>`);
+  desenharReceitaProduto();previewProduto();
+}
+function desenharReceitaProduto(){
+  const fp=formProd,lista=$('#tbReceita');if(!lista)return;
+  lista.innerHTML=fp.itens.map((it,idx)=>{
+    const m=materialById(it.materialId);
+    return `<div class="receita-item">
+      <div class="receita-material"><button type="button" class="btn sec" onclick="abrirBuscaMaterial(${idx})" aria-label="Trocar material: ${esc(m?.nome||'não selecionado')}">${esc(m?.nome||'Escolher material')}</button>
+        <small class="muted">${m?fmtBRL(custoUnit(m))+' / '+esc(unidadeCurta(m.unidade)):'Selecione um material cadastrado.'}</small></div>
+      <div class="campo receita-quantidade"><label>Quantidade${m?' ('+esc(unidadeCurta(m.unidade))+')':''}</label><input data-idx="${idx}" class="inpQtd" inputmode="decimal" value="${esc(String(it.qtd??1).replace('.',','))}" aria-label="Quantidade de ${esc(m?.nome||'material')}"></div>
+      <div class="receita-custo"><span class="muted">Custo</span><strong class="receita-subtotal">${m?fmtBRL(custoUnit(m)*it.qtd):'—'}</strong></div>
+      <button type="button" class="btn mini perigo btn-remover" onclick="remItemReceita(${idx})" aria-label="Remover ${esc(m?.nome||'material')} do produto">✕</button>
+    </div>`;
+  }).join('')||'<div class="vazio"><strong>Nenhum material adicionado</strong>Selecione um material ou cadastre um novo.</div>';
+  prepararInterface(lista);
   $$('.inpQtd').forEach(inp=>inp.addEventListener('input',()=>{
     const item=fp.itens[+inp.dataset.idx];item.qtd=parseNum(inp.value);
     const material=materialById(item.materialId);
-    inp.closest('tr').cells[2].textContent=material?fmtBRL(custoUnit(material)*item.qtd):'—';
+    inp.closest('.receita-item').querySelector('.receita-subtotal').textContent=material?fmtBRL(custoUnit(material)*item.qtd):'—';
     previewProduto();
   }));
-  previewProduto();
 }
-/* busca de material para a linha idx da receita (mesma UI de sugestões) */
-function abrirBuscaMaterial(idx){
-  const matOptions=db.materiais.map(m=>({id:m.id,rotulo:m.nome,extra:fmtBRL(custoUnit(m))+'/'+m.unidade}));
-  const fpItens=formProd.itens;
-  abrirModal(`<h3>Escolher material — item ${idx+1}</h3>
-    <div class="sug-wrap" id="wrapBuscaMat"></div>
-    <div class="acoes"><button class="btn neutro" type="button" onclick="desenharFormProduto()">Voltar</button></div>`);
-  montaSugestoes('#wrapBuscaMat',matOptions,m=>{
-    fpItens[idx].materialId=m.id;
-    desenharFormProduto();
+function vincularMaterialProduto(materialId,idx){
+  if(idx==null){formProd.itens.push({materialId,qtd:1});idx=formProd.itens.length-1;}
+  else{formProd.itens[idx].materialId=materialId;}
+  desenharReceitaProduto();previewProduto();
+  $(`#tbReceita .inpQtd[data-idx="${idx}"]`)?.focus();
+}
+function abrirBuscaMaterial(idx=null){
+  abrirModal(`<h3>${idx==null?'Adicionar':'Trocar'} material</h3>
+    <form onsubmit="return false">
+      <div class="material-busca"><input id="buscaMaterialProduto" aria-label="Buscar material" placeholder="Buscar material ou fornecedor..." autocomplete="off">
+        <button class="btn" type="button" id="novoMaterialProduto">+ Novo material</button></div>
+      <p class="contagem" id="contagemMaterialProduto" aria-live="polite"></p>
+      <div class="lista-materiais-escolha" id="listaMaterialProduto"></div>
+      <div class="acoes"><button class="btn neutro" type="button" onclick="fecharModal()">Voltar ao produto</button></div>
+    </form>`,{empilhar:true});
+  const busca=$('#buscaMaterialProduto'),lista=$('#listaMaterialProduto');
+  function listar(){
+    const termo=textoBusca(busca.value.trim());
+    const materiais=db.materiais.filter(m=>!termo||textoBusca(m.nome+' '+(m.fornecedor||'')).includes(termo)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}));
+    $('#contagemMaterialProduto').textContent=materiais.length+' de '+db.materiais.length+' materiais';
+    lista.innerHTML=materiais.map(m=>`<button type="button" class="material-escolha" data-material-id="${esc(m.id)}">
+      <span class="material-escolha-info"><strong>${esc(m.nome)}</strong><span class="muted">${esc(m.fornecedor||unidadeNome(m.unidade))}</span></span>
+      <span class="material-escolha-custo"><strong>${fmtBRL(custoUnit(m))}</strong><span class="muted">por ${esc(unidadeCurta(m.unidade))}</span></span></button>`).join('')||'<div class="vazio"><strong>Nenhum material encontrado</strong>Use “Novo material” para cadastrar e adicionar ao produto.</div>';
+  }
+  lista.addEventListener('click',ev=>{
+    const botao=ev.target.closest('[data-material-id]');if(!botao)return;
+    fecharModal();vincularMaterialProduto(botao.dataset.materialId,idx);
   });
-  const inp=$('#wrapBuscaMat .sug-input');if(inp)inp.focus();
+  busca.addEventListener('input',listar);
+  busca.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();lista.querySelector('button')?.click();}});
+  $('#novoMaterialProduto').addEventListener('click',()=>abrirFormMaterial(null,{nomeInicial:busca.value.trim(),empilhar:true,aoSalvar:m=>{fecharModal();vincularMaterialProduto(m.id,idx);}}));
+  listar();
 }
-function addItemReceita(){formProd.itens.push({materialId:'',qtd:1});desenharFormProduto();}
-function remItemReceita(idx){formProd.itens.splice(idx,1);desenharFormProduto();}
+function addItemReceita(){abrirBuscaMaterial();}
+function remItemReceita(idx){formProd.itens.splice(idx,1);desenharReceitaProduto();previewProduto();}
 function previewProduto(){
   const el=$('#previewProd');if(!el)return;
   const c=custoProduto(formProd);
@@ -853,10 +1000,13 @@ function previewProduto(){
   el.innerHTML=`<div class="resumo-linha"><span>Materiais</span><span>${fmtBRL(c.materiais)}</span></div>
   <div class="resumo-linha"><span>Trabalho e despesas · ${formProd.tempoMin||0} min</span><span>${fmtBRL(c.maoDeObra+c.custoFixo)}</span></div>
   <div class="resumo-linha total"><span>Custo total</span><span>${fmtBRL(c.total)}</span></div>
-  <div class="resumo-linha"><span>Preço de venda calculado</span><span><strong>${fmtBRL(sug)}</strong></span></div>`;
+  <div class="resumo-linha"><span>Preço calculado</span><span>${fmtBRL(sug)}</span></div>
+  <div class="resumo-linha total"><span>Preço de venda</span><span>${fmtBRL(precoFinal(formProd))}</span></div>`;
 }
 function salvarProduto(ev){
   ev.preventDefault();const f=ev.target;
+  if(!f.nome.value.trim()){f.nome.value='';f.nome.reportValidity();return false;}
+  if(formProd.itens.some(i=>!materialById(i.materialId)||i.qtd<=0)){alert('Selecione um material e informe uma quantidade maior que zero em cada linha.');return false;}
   const itens=formProd.itens.filter(i=>i.materialId&&i.qtd>0);
   const pfTxt=f.precoFinalManual.value.trim();
   const dados={nome:f.nome.value.trim(),obs:f.obs.value.trim(),tempoMin:parseNum(f.tempoMin.value),lucroPct:parseNum(f.lucroPct.value),itens,precoFinalManual:pfTxt?parseNum(pfTxt):null};
