@@ -297,6 +297,19 @@ export async function runTests() {
     assert.equal(pc.get('db.config.nomeLoja'), 'Dados do arquivo'); assert.equal(handle.state.writes, 0);
   });
 
+  await check('Vínculo antigo com arquivo é identificado e conectar a nuvem carrega os dados do iPhone', async () => {
+    const cloud = new Cloud(), iphone = makeDevice(cloud); await iphone.open();
+    const handle = fileHandle(iphone.get('payloadSync()'));
+    const pc = makeDevice(cloud, { cloudEnabled: false, handle }); await pc.open();
+    assert.equal(pc.button.textContent, '📁 Atualizar arquivo'); assert.equal(pc.get('nuvemAtiva()'), false);
+    iphone.edit('Alterado no iPhone'); await iphone.flushSave(); await pc.sync();
+    assert.equal(pc.get('db.config.nomeLoja'), 'PriArte Ateliê');
+    await pc.login().promise;
+    assert.equal(pc.get('db.config.nomeLoja'), 'Alterado no iPhone');
+    assert.equal(pc.button.textContent, '☁️ Atualizar'); assert.equal(pc.get('nuvemAtiva()'), true);
+    assert.equal(handle.state.writes, 0);
+  });
+
   await check('Falha de gravação do arquivo mantém os dados pendentes para nova tentativa', async () => {
     const cloud = new Cloud(), base = makeDevice(cloud), handle = fileHandle(base.get('payloadSync()'));
     const pc = makeDevice(cloud, { cloudEnabled: false, handle }); await pc.open();
