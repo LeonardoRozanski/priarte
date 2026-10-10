@@ -861,7 +861,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.10-02';
+const APP_VERSAO='2026.10.10-03';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -2468,6 +2468,9 @@ let syncConflito=null;
 let syncAdiado=false;
 let syncPromessa=null;
 let syncRepetir=false;
+let syncForcarLeitura=false;
+let resumoUltimaLeituraNuvem=null;
+let vinculandoAtelie=false;
 let syncTimer=null;
 let syncDebounce=null;
 const SYNC_DB_KEY='papelariaSyncDB';
@@ -2490,10 +2493,10 @@ function salvarEstadoSync(){
   try{localStorage.setItem(SYNC_STATE_KEY,JSON.stringify(syncEstado));}catch(e){console.warn(e);}
 }
 function selecionarOrigemSync(){
-  const origem=nuvemAtiva()?'nuvem:'+nuvem.url+':'+nuvem.session.user.id:'arquivo';
+  const origem=nuvemAtiva()?'nuvem:'+nuvem.url+':'+(nuvem.atelie||nuvem.session.user.id):'arquivo';
   if(syncEstado.origem!==origem){
     syncEstado.origem=origem;syncEstado.base=null;syncEstado.versao=0;syncEstado.ultimoEnvio=null;
-    syncConflito=null;salvarEstadoSync();
+    syncConflito=null;resumoUltimaLeituraNuvem=null;salvarEstadoSync();
   }
 }
 function statusSync(){
@@ -2520,6 +2523,31 @@ function atualizaSyncBtn(){
   b.setAttribute('aria-label',b.title);
   const status=$('#syncStatus');if(status)status.textContent=statusSync();
   const configStatus=$('#configSyncStatus');if(configStatus)configStatus.textContent=statusSync();
+  const local=$('#syncResumoLocal');if(local)local.textContent=descricaoResumoSync(resumoDadosSync(db));
+  const remoto=$('#syncResumoRemoto');if(remoto)remoto.textContent=resumoUltimaLeituraNuvem?
+    descricaoResumoSync(resumoUltimaLeituraNuvem):'Aguardando leitura completa da nuvem.';
+}
+function resumoDadosSync(dados){
+  return {materiais:dados.materiais.length,produtos:dados.produtos.length,
+    fotos:dados.produtos.reduce((n,p)=>n+(Array.isArray(p.fotos)?
+      p.fotos.filter(f=>typeof f?.dados==='string'&&f.dados.startsWith('data:image/')).slice(0,3).length:0),0),
+    orcamentos:dados.orcamentos.length,pedidos:dados.pedidos.length};
+}
+function descricaoResumoSync(r){
+  return 'Materiais: '+r.materiais+' · Produtos: '+r.produtos+' · Fotos: '+r.fotos+' · '+
+    'Orçamentos: '+r.orcamentos+' · Pedidos: '+r.pedidos;
+}
+function registrosAusentesSync(local,remoto){
+  for(const campo of ['materiais','produtos','lotes','orcamentos','pedidos']){
+    const recebidos=new Map((remoto[campo]||[]).map(item=>[item.id,item]));
+    for(const item of local[campo]||[]){
+      const recebido=recebidos.get(item.id);
+      if(!recebido)return true;
+      if(campo==='produtos'&&(item.fotos||[]).some(f=>
+        f.dados&&!(recebido.fotos||[]).some(r=>r.id===f.id&&r.dados)))return true;
+    }
+  }
+  return false;
 }
 function assinaturaDados(dados){
   // O PostgreSQL/jsonb pode devolver as propriedades em outra ordem.
@@ -2585,7 +2613,7 @@ async function dbSyncSet(k,v){
 }
 async function carregarHandleSync(){
   if(nuvemAtiva()){
-    selecionarOrigemSync();iniciarSyncAuto();await checarAtualizacaoRemota(true);return;
+    selecionarOrigemSync();iniciarSyncAuto();await checarAtualizacaoRemota(true,{reler:true});return;
   }
   if(nuvem){syncHandle=null;syncAutorizado=false;atualizaSyncBtn();return;}
   syncHandle=await dbSyncGet('handle')||null;
@@ -2598,7 +2626,7 @@ async function carregarHandleSync(){
   atualizaSyncBtn();
 }
 async function sincronizarAgora(){
-  if(syncBusy)return syncPromessa;
+  if(syncBusy)return checarAtualizacaoRemota(false);
   if(syncConflito){abrirConflitoSync();return;}
   if(!temOrigemSync()||(nuvemAtiva()&&nuvem.precisaLogin)){abrirSync();return;}
   if(!nuvemAtiva()&&!syncAutorizado){
@@ -2740,26 +2768,116 @@ async function conectarNuvem(ev){
   }catch(e){erro.textContent=e.message;}finally{b.disabled=false;}
   return false;
 }
-async function lerOrigemSync(){
+async function lerOrigemSync(forcarLeitura=false){
   if(!nuvemAtiva())return lerArquivoSync();
-  // Fotos só são baixadas quando a versão muda; verificações periódicas leem a versão.
-  const filtro='&user_id=eq.'+encodeURIComponent(nuvem.session.user.id)+'&limit=1';
+  const atelie=await resolverAtelieNuvem();
+  // A abertura e o botão Atualizar conferem o conteúdo completo, inclusive as fotos.
+  // Verificações periódicas podem reutilizar a base quando a versão não muda.
+  const filtro='&user_id=eq.'+encodeURIComponent(atelie)+'&limit=1';
   const estado=await apiNuvem('/rest/v1/papelaria_sync?select=version,updated_at'+filtro);
   if(!Array.isArray(estado))throw new Error('Resposta inválida da nuvem.');
   if(!estado.length)return null;
-  if(estado[0].version===syncEstado.versao&&syncEstado.base){
+  if(!forcarLeitura&&estado[0].version===syncEstado.versao&&syncEstado.base){
     try{return {...normalizarArquivoSync(JSON.parse(syncEstado.base)),versao:estado[0].version};}catch(e){}
   }
   const linhas=await apiNuvem('/rest/v1/papelaria_sync?select=version,payload,updated_at&user_id=eq.'+
-    encodeURIComponent(nuvem.session.user.id)+'&limit=1');
+    encodeURIComponent(atelie)+'&limit=1');
   if(!Array.isArray(linhas))throw new Error('Resposta inválida da nuvem.');
   if(!linhas.length)return null;
-  return {...normalizarArquivoSync(linhas[0].payload),versao:linhas[0].version};
+  const remoto={...normalizarArquivoSync(linhas[0].payload),versao:linhas[0].version};
+  resumoUltimaLeituraNuvem=resumoDadosSync(remoto.dados);
+  return remoto;
+}
+const UUID_NUVEM=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function resolverAtelieNuvem(){
+  const pessoa=nuvem.session.user.id;
+  let atelie,disponivel=true;
+  try{atelie=await apiNuvem('/rest/v1/rpc/atelie_papelaria',{method:'POST',body:{}});}
+  catch(e){
+    if(e.status!==404||e.code!=='PGRST202')throw e;
+    if(nuvem.atelie&&nuvem.atelie!==pessoa)throw new Error('Atualize a configuração do Supabase para acessar o ateliê compartilhado.');
+    disponivel=false;atelie=pessoa;
+  }
+  if(!UUID_NUVEM.test(atelie||''))throw new Error('A nuvem não confirmou o ateliê deste login.');
+  if(nuvem.atelie&&nuvem.atelie!==pessoa&&nuvem.atelie!==atelie){
+    throw new Error('Seu acesso ao ateliê mudou. Os dados deste aparelho foram mantidos. Reconecte seu login para continuar.');
+  }
+  if(atelie!==pessoa&&nuvem.atelie!==atelie){
+    await gravarRegistroPrivado('antesCompartilhar',JSON.stringify(payloadSync()));
+    nuvem.aguardandoAtelie=true;
+  }
+  nuvem.atelie=atelie;
+  nuvem.compartilhamentoDisponivel=disponivel;
+  guardarNuvem();selecionarOrigemSync();return atelie;
+}
+function abrirCompartilhamento(){
+  if(!nuvemAtiva()){abrirSync();return;}
+  const vinculado=nuvem.atelie&&nuvem.atelie!==nuvem.session.user.id;
+  abrirModal(`<h3>Compartilhar ateliê</h3>
+    ${vinculado?'<p>Este login já participa do ateliê compartilhado. Materiais, produtos, fotos, orçamentos e pedidos são os mesmos nos aparelhos vinculados.</p>':`
+      <p>Use logins diferentes com os mesmos materiais, produtos, fotos, orçamentos e pedidos.</p>
+      <h4>No aparelho com os dados corretos</h4>
+      <button id="btnGerarConvite" class="btn sec" onclick="gerarConviteNuvem()">Gerar código de convite</button>
+      <div id="areaCodigoConvite" hidden>
+        <div class="campo" style="margin-top:12px"><label for="syncCodigoConvite">Código do convite</label><input id="syncCodigoConvite" readonly autocapitalize="none"></div>
+        <p class="muted">Válido por 24 horas, para um login. Um novo código substitui o anterior.</p>
+        <button class="btn sec" onclick="copiarConviteNuvem()">Copiar código</button>
+      </div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h4>No outro login</h4>
+      <p class="muted">Vincular carrega os dados do ateliê que enviou o convite. A cópia atual deste aparelho fica guardada como backup local.</p>
+      <form onsubmit="entrarAtelieNuvem(event);return false">
+        <div class="campo"><label for="syncConviteRecebido">Código recebido</label><input id="syncConviteRecebido" name="codigo" required autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+        <div class="acoes"><button class="btn" type="submit">Vincular e carregar dados</button><button class="btn neutro" type="button" onclick="abrirSync()">Voltar</button></div>
+      </form>`}
+    <p id="erroCompartilhar" class="neg" role="alert"></p>
+    <div id="ajudaCompartilhar" hidden><p class="muted">Ative o compartilhamento uma vez no SQL Editor do seu projeto Supabase com o script atualizado.</p>
+      <a href="https://github.com/LeonardoRozanski/priarte/blob/master/SINCRONIZACAO.md#compartilhar-com-outro-login" target="_blank" rel="noopener">Ver configuração</a></div>
+    ${vinculado?'<div class="acoes"><button class="btn sec" onclick="abrirSync()">Voltar</button></div>':''}`);
+}
+function mostrarErroCompartilhar(erro){
+  const campo=$('#erroCompartilhar');if(campo)campo.textContent=erro.message;
+  if(erro.status===404&&erro.code==='PGRST202'){const ajuda=$('#ajudaCompartilhar');if(ajuda)ajuda.hidden=false;}
+}
+async function gerarConviteNuvem(){
+  const b=$('#btnGerarConvite');if(!b)return;b.disabled=true;
+  $('#erroCompartilhar').textContent='';
+  try{
+    if(syncPromessa)await syncPromessa;
+    if(syncEstado.pendente||syncConflito||syncErro)throw new Error('Conclua a sincronização deste aparelho antes de gerar o convite.');
+    const codigo=await apiNuvem('/rest/v1/rpc/criar_convite_papelaria',{method:'POST',body:{}});
+    if(!UUID_NUVEM.test(codigo||''))throw new Error('A nuvem não confirmou o convite.');
+    if($('#syncCodigoConvite')){$('#syncCodigoConvite').value=codigo;$('#areaCodigoConvite').hidden=false;}
+  }catch(e){mostrarErroCompartilhar(e);}finally{b.disabled=false;}
+}
+async function copiarConviteNuvem(){
+  const campo=$('#syncCodigoConvite');if(!campo)return;
+  try{await navigator.clipboard.writeText(campo.value);toast('Código copiado.');}
+  catch(e){campo.focus();campo.select();toast('Selecione e copie o código.');}
+}
+async function entrarAtelieNuvem(ev){
+  ev.preventDefault();if(vinculandoAtelie)return false;
+  const f=ev.target,b=f.querySelector('button[type=submit]'),codigo=f.codigo.value.trim();
+  $('#erroCompartilhar').textContent='';
+  if(!UUID_NUVEM.test(codigo)){mostrarErroCompartilhar(new Error('Cole o código completo gerado no outro aparelho.'));return false;}
+  b.disabled=true;
+  let conectado=false;
+  try{
+    if(syncPromessa)await syncPromessa;
+    vinculandoAtelie=true;clearTimeout(syncDebounce);await gravacaoPrivada;
+    await gravarRegistroPrivado('antesCompartilhar',JSON.stringify(payloadSync()));
+    const atelie=await apiNuvem('/rest/v1/rpc/entrar_atelie_papelaria',{method:'POST',body:{p_codigo:codigo}});
+    if(!UUID_NUVEM.test(atelie||''))throw new Error('A nuvem não confirmou o vínculo.');
+    nuvem.atelie=atelie;nuvem.aguardandoAtelie=true;nuvem.compartilhamentoDisponivel=true;guardarNuvem();
+    selecionarOrigemSync();syncEstado.pendente=false;syncConflito=null;syncErro='';
+    salvarEstadoSync();await gravacaoPrivada;conectado=true;fecharModal();
+  }catch(e){mostrarErroCompartilhar(e);}finally{vinculandoAtelie=false;b.disabled=false;atualizaSyncBtn();}
+  if(conectado){await checarAtualizacaoRemota(false);if(syncErro)abrirSync();}
+  return false;
 }
 async function escreverOrigemSync(payload,versao){
   if(nuvemAtiva()){
     const linhas=await apiNuvem('/rest/v1/rpc/salvar_papelaria',{method:'POST',
-      body:{p_versao:versao,p_payload:payload}});
+      body:{p_versao:versao,p_payload:payload,...(nuvem.compartilhamentoDisponivel?{p_atelie:nuvem.atelie}: {})}});
     if(!Array.isArray(linhas)||!linhas[0])throw new Error('A nuvem não confirmou o envio.');
     return linhas[0].version;
   }
@@ -2770,9 +2888,10 @@ async function escreverOrigemSync(payload,versao){
 }
 
 /* Uma operação por vez; um novo save durante o envio entra na próxima rodada. */
-function checarAtualizacaoRemota(silencioso=true){
-  if(!db)return Promise.resolve();
+function checarAtualizacaoRemota(silencioso=true,{reler=false}={}){
+  if(!db||vinculandoAtelie)return Promise.resolve();
   if(!temOrigemSync()||(!nuvemAtiva()&&!syncAutorizado))return Promise.resolve();
+  if(!silencioso||reler)syncForcarLeitura=true;
   if(syncPromessa){syncRepetir=true;return syncPromessa;}
   if(syncConflito)return Promise.resolve();
   syncBusy=true;atualizaSyncBtn();
@@ -2783,13 +2902,18 @@ function checarAtualizacaoRemota(silencioso=true){
         syncRepetir=false;
         await gravacaoPrivada;
         selecionarOrigemSync();
-        const remoto=await lerOrigemSync();
+        const forcarLeitura=syncForcarLeitura;syncForcarLeitura=false;
+        const remoto=await lerOrigemSync(forcarLeitura);
         syncAdiado=false;syncErro='';
         const assinaturaRemota=remoto?assinaturaDados(remoto.dados):null;
         const assinaturaLocal=assinaturaDados(db);
         if(remoto&&assinaturaLocal===assinaturaRemota){
           syncEstado.base=assinaturaRemota;syncEstado.versao=remoto.versao||0;syncEstado.pendente=false;
-        }else if(remoto&&assinaturaRemota!==syncEstado.base){
+        }else if(remoto&&(!syncEstado.pendente||assinaturaRemota!==syncEstado.base)){
+          if(nuvemAtiva()&&syncEstado.base&&remoto.versao===syncEstado.versao&&
+            assinaturaRemota!==syncEstado.base&&registrosAusentesSync(db,remoto.dados)){
+            syncConflito=remoto;toast('A nuvem devolveu uma cópia diferente, com dados faltantes. Toque em Resolver.');break;
+          }
           if(syncEstado.pendente){
             syncConflito=remoto;toast('Há alterações nos dois aparelhos. Toque em Resolver.');break;
           }
@@ -2801,6 +2925,7 @@ function checarAtualizacaoRemota(silencioso=true){
           aplicarDadosRemotos(remoto);
           syncEstado.base=assinaturaRemota;syncEstado.versao=remoto.versao||0;
         }else if(syncEstado.pendente||!remoto){
+          if(!remoto&&nuvemAtiva()&&nuvem.aguardandoAtelie)throw new Error('Os dados do ateliê compartilhado ainda não foram recebidos. Tente atualizar novamente.');
           if(!remoto&&syncEstado.base!==null)throw new Error('Os dados sincronizados não foram encontrados. Sua cópia local foi mantida.');
           const payload=JSON.parse(JSON.stringify(payloadSync()));
           const enviado=assinaturaDados(payload.dados);
@@ -2815,6 +2940,7 @@ function checarAtualizacaoRemota(silencioso=true){
           if(syncEstado.pendente)syncRepetir=true;
         }
         ultimoSync=new Date();syncErro='';salvarEstadoSync();
+        if(remoto&&nuvemAtiva()&&nuvem.aguardandoAtelie){nuvem.aguardandoAtelie=false;guardarNuvem();}
         await gravacaoPrivada;
       }while(syncRepetir&&!syncConflito);
       if(!silencioso&&!syncConflito&&!editandoFormulario())toast('Dados atualizados.');
@@ -2838,6 +2964,8 @@ window.addEventListener('online',()=>checarAtualizacaoRemota(true));
 function abrirConflitoSync(){
   abrirModal(`<h3>☁️ Qual versão deseja manter?</h3>
     <p>Este aparelho e ${nuvemAtiva()?'a nuvem':'o arquivo'} têm alterações diferentes. A versão escolhida substituirá a outra.</p>
+    <p class="muted">Neste aparelho:<br>${esc(descricaoResumoSync(resumoDadosSync(db)))}</p>
+    <p class="muted">${nuvemAtiva()?'Na nuvem':'No arquivo'}:<br>${esc(descricaoResumoSync(resumoDadosSync(syncConflito.dados)))}</p>
     <div class="acoes">
       <button class="btn" onclick="resolverConflitoSync('remoto')">Usar dados ${nuvemAtiva()?'da nuvem':'do arquivo'}</button>
       <button class="btn sec" onclick="resolverConflitoSync('local')">Usar dados deste aparelho</button>
@@ -2869,11 +2997,16 @@ function abrirSync(){
       <details><summary>Conexão deste aparelho</summary>
         <p class="muted">Projeto: ${esc(nuvem.url)}<br>
         Conta: ${esc(nuvem.session.user.id)}<br>
+        Ateliê: ${esc(nuvem.atelie||nuvem.session.user.id)}<br>
         Versão recebida: ${syncEstado.versao||0}<br>
         Último envio: ${syncEstado.ultimoEnvio?new Date(syncEstado.ultimoEnvio).toLocaleString('pt-BR'):'nenhum confirmado'}<br>
         App: ${APP_VERSAO}</p>
+        <p class="muted">Neste aparelho:<br><span id="syncResumoLocal">${esc(descricaoResumoSync(resumoDadosSync(db)))}</span></p>
+        <p class="muted">Última leitura da nuvem:<br><span id="syncResumoRemoto">${resumoUltimaLeituraNuvem?
+          esc(descricaoResumoSync(resumoUltimaLeituraNuvem)):'Aguardando leitura completa da nuvem.'}</span></p>
       </details>
       <div class="acoes">
+        <button class="btn sec" onclick="abrirCompartilhamento()">Compartilhar ateliê</button>
         <button class="btn sec" onclick="baixarCopiaDados()">Baixar backup</button>
         <button class="btn neutro" onclick="desconectarNuvem()">Desconectar</button>
       </div>`:`

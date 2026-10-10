@@ -21,33 +21,58 @@ class Storage {
 }
 
 class Cloud {
-  constructor() { this.row = null; this.calls = []; this.offline = false; this.refreshInvalid = false; this.loginInvalid = false; this.unauthorized = false; this.writeConflicts = 0; this.beforeWrite = null; this.activeWrites = 0; this.maxWrites = 0; }
+  constructor() { this.rows = new Map(); this.members = new Map(); this.invites = new Map(); this.sharing = true; this.calls = []; this.offline = false; this.refreshInvalid = false; this.loginInvalid = false; this.unauthorized = false; this.writeConflicts = 0; this.beforeWrite = null; this.activeWrites = 0; this.maxWrites = 0; }
+  get row() { return this.rows.get(USER) ?? null; }
+  set row(value) { if(value)this.rows.set(USER,value);else this.rows.delete(USER); }
   async fetch(url, options, device) {
     if (this.offline) throw vm.runInContext('new TypeError("offline")', device.context);
     const parsed = new URL(url);
     const body = options.body ? JSON.parse(options.body) : null;
     this.calls.push({ path: parsed.pathname, query: parsed.search, method: options.method, body, headers: options.headers });
     const response = (status, data) => ({ ok: status < 400, status, text: async () => JSON.stringify(data) });
+    const person = parsed.pathname.startsWith('/auth/') ? device.user : device.run('nuvem.session.user.id'), owner = this.members.get(person) || person;
     assert.equal(options.headers.apikey, 'sb_publishable_teste');
     assert.equal(options.cache, 'no-store');
     if (parsed.pathname === '/auth/v1/token') {
       if (this.loginInvalid && parsed.search.includes('grant_type=password')) return response(400, { message: 'E-mail ou senha incorretos' });
       if (this.refreshInvalid) return response(400, { message: 'Refresh token inválido' });
-      const user = { id: USER, email: 'teste@example.com' };
+      const user = { id: person, email: 'teste@example.com' };
       return response(200, { access_token: 'access-novo', refresh_token: 'refresh-novo', expires_in: 3600, user });
     }
     if (parsed.pathname === '/auth/v1/logout') return response(200, null);
     if (this.unauthorized) return response(401, { message: 'Sessão inválida' });
     assert.ok(options.headers.Authorization?.startsWith('Bearer access-'));
-    if (parsed.pathname === '/rest/v1/papelaria_sync') return response(200, this.row ? [parsed.searchParams.get('select') === 'version,updated_at' ? {version:this.row.version} : clone(this.row)] : []);
+    if(parsed.pathname.endsWith('/atelie_papelaria')) return this.sharing ? response(200,owner) : response(404,{code:'PGRST202'});
+    if(parsed.pathname.endsWith('/criar_convite_papelaria')){
+      if(!this.sharing)return response(404,{code:'PGRST202'});
+      if(owner!==person)return response(403,{message:'Somente o titular pode gerar um convite.'});
+      if(!this.rows.has(owner))return response(400,{message:'Sincronize antes de compartilhar.'});
+      const code='11111111-1111-1111-1111-'+String(this.invites.size+1).padStart(12,'0');
+      this.invites.set(code,{owner});return response(200,code);
+    }
+    if(parsed.pathname.endsWith('/entrar_atelie_papelaria')){
+      if(!this.sharing)return response(404,{code:'PGRST202'});
+      const invite=this.invites.get(body.p_codigo);
+      if(!invite||invite.used&&invite.used!==person)return response(400,{message:'Código inválido ou já utilizado.'});
+      if(invite.owner===person||owner!==person&&owner!==invite.owner)return response(400,{message:'Login já vinculado.'});
+      this.members.set(person,invite.owner);invite.used=person;return response(200,invite.owner);
+    }
+    if (parsed.pathname === '/rest/v1/papelaria_sync') {
+      const row=this.rows.get(owner), allowed=!parsed.searchParams.has('user_id')||parsed.searchParams.get('user_id')==='eq.'+owner;
+      return response(200, allowed&&row ? [parsed.searchParams.get('select') === 'version,updated_at' ? {version:row.version} : clone(row)] : []);
+    }
     if (parsed.pathname === '/rest/v1/rpc/salvar_papelaria') {
       this.activeWrites++; this.maxWrites = Math.max(this.maxWrites, this.activeWrites);
       try {
         if (this.writeConflicts-- > 0) return response(409, { code: 'PT409', message: 'Dados mudaram' });
         if (this.beforeWrite) await this.beforeWrite(body);
-        if (body.p_versao !== (this.row?.version ?? 0)) return response(409, { code: 'PT409', message: 'Dados mudaram' });
-        this.row = { version: (this.row?.version ?? 0) + 1, payload: clone(body.p_payload) };
-        return response(200, [{ version: this.row.version }]);
+        const writableOwner=this.members.get(person)||person;
+        if(body.p_atelie&&body.p_atelie!==writableOwner||!body.p_atelie&&writableOwner!==person)return response(403,{message:'O acesso ao ateliê mudou ou o app precisa ser atualizado.'});
+        const row=this.rows.get(writableOwner);
+        if (body.p_versao !== (row?.version ?? 0)) return response(409, { code: 'PT409', message: 'Dados mudaram' });
+        const updated={ version: (row?.version ?? 0) + 1, payload: clone(body.p_payload) };
+        this.rows.set(writableOwner,updated);
+        return response(200, [{ version: updated.version }]);
       } finally { this.activeWrites--; }
     }
     throw new Error('Endpoint inesperado: ' + parsed.pathname);
@@ -56,14 +81,14 @@ class Cloud {
   get writes() { return this.calls.filter(call => call.path.endsWith('/salvar_papelaria')); }
 }
 
-function makeDevice(cloud, { storage = new Storage(), cloudEnabled = true, handle = null } = {}) {
+function makeDevice(cloud, { storage = new Storage(), cloudEnabled = true, handle = null, user = USER } = {}) {
   if (cloudEnabled && !storage.getItem('papelariaNuvem')) storage.setItem('papelariaNuvem', JSON.stringify({
     url: 'https://teste.supabase.co', key: 'sb_publishable_teste',
-    session: { access_token: 'access-original', refresh_token: 'refresh-original', expires_at: Date.now() / 1000 + 3600, user: { id: USER, email: 'teste@example.com' } }
+    session: { access_token: 'access-original', refresh_token: 'refresh-original', expires_at: Date.now() / 1000 + 3600, user: { id: user, email: 'teste@example.com' } }
   }));
   const button = { textContent: '', title: '', setAttribute() {} };
   const events = {}; const timeouts = new Map(); let timerId = 0;
-  const device = { storage, button, messages: [], modal: '', rendering: 0, events, editing: false, configForm: null, handle };
+   const device = { storage, button, messages: [], modal: '', rendering: 0, events, editing: false, configForm: null, handle, user };
   const context = vm.createContext({
     console, localStorage: storage, Intl, URL, Blob, AbortController: TestAbortController, atob,
     document: { hidden: false, activeElement: null, querySelector: selector => selector === '#btnSync' ? button : selector === '#overlay.aberto form' && device.editing ? {} : selector === 'form[data-sync-editando="1"]' && device.configForm?.dataset.syncEditando === '1' ? device.configForm : null, querySelectorAll: () => [], addEventListener: (name, fn) => { events[name] = fn; } },
@@ -386,16 +411,148 @@ export async function runTests() {
   await check('Verificações sem mudança baixam apenas a versão; novos dados recebem o payload completo', async () => {
     const cloud = new Cloud(), pc = makeDevice(cloud);await pc.open();
     const payloadReads=()=>cloud.calls.filter(c=>c.path.endsWith('/papelaria_sync')&&new URLSearchParams(c.query).get('select')?.includes('payload')).length;
-    const before=payloadReads();await pc.sync();await pc.sync();
+    const before=payloadReads();await pc.run('checarAtualizacaoRemota(true)');await pc.run('checarAtualizacaoRemota(true)');
     assert.equal(payloadReads(),before);
     cloud.change(d=>{d.config.nomeLoja='Ateliê fictício atualizado';});await pc.sync();
     assert.equal(payloadReads(),before+1);assert.equal(pc.get('db.config.nomeLoja'),'Ateliê fictício atualizado');
+  });
+
+  await check('Atualização manual recupera fotos e cadastros quando uma base incompleta tem a mesma versão da nuvem', async () => {
+    const cloud=new Cloud(), pc=makeDevice(cloud);await pc.open();
+    cloud.change(d=>{
+      d.materiais.push({id:'material-recuperacao',nome:'Material fictício',custoUnitario:2});
+      d.produtos.push({id:'produto-recuperacao',nome:'Produto fictício',itens:[],fotos:[{id:'foto-recuperacao',dados:'data:image/jpeg;base64,/9j/AA=='}]});
+    });
+    pc.context.remoteVersion=cloud.row.version;
+    pc.run('syncEstado.versao=remoteVersion;syncEstado.base=assinaturaDados(db);syncEstado.pendente=false');
+    const before=cloud.calls.length;await pc.sync();
+    assert.deepEqual(pc.get('db'),cloud.row.payload.dados);
+    assert.ok(cloud.calls.slice(before).some(c=>new URLSearchParams(c.query).get('select')?.includes('payload')));
+    assert.equal(cloud.writes.length,1);
+    assert.deepEqual(pc.get('resumoUltimaLeituraNuvem'),{materiais:1,produtos:1,fotos:1,orcamentos:0,pedidos:0});
+  });
+
+  await check('Abrir o app confere a nuvem completa mesmo com versão local idêntica e não publica a cópia incompleta', async () => {
+    const cloud=new Cloud(), original=makeDevice(cloud);await original.open();
+    cloud.change(d=>{d.produtos.push({id:'produto-abertura',nome:'Produto fictício',itens:[],fotos:[{id:'foto-abertura',dados:'data:image/jpeg;base64,/9j/AA=='}]});});
+    original.context.remoteVersion=cloud.row.version;
+    original.run('syncEstado.versao=remoteVersion;syncEstado.base=assinaturaDados(db);syncEstado.pendente=false;salvarEstadoSync()');
+    const reopened=makeDevice(cloud,{storage:original.storage});await reopened.open();
+    assert.deepEqual(reopened.get('db'),cloud.row.payload.dados);
+    assert.equal(cloud.writes.length,1);
+  });
+
+  await check('Uma cópia local sem alterações recupera dados da base completa, preservando formulários abertos', async () => {
+    const cloud=new Cloud(), pc=makeDevice(cloud);await pc.open();
+    cloud.change(d=>{d.config.nomeLoja='Ateliê fictício completo';});await pc.sync();
+    pc.run("db.config.nomeLoja='Cópia incompleta'");pc.editing=true;
+    await pc.run('checarAtualizacaoRemota(true)');
+    assert.equal(pc.get('db.config.nomeLoja'),'Cópia incompleta');assert.equal(pc.get('syncAdiado'),true);
+    pc.editing=false;await pc.run('checarAtualizacaoRemota(true)');
+    assert.deepEqual(pc.get('db'),cloud.row.payload.dados);assert.equal(cloud.writes.length,1);
+  });
+
+  await check('Uma resposta incompleta da mesma versão nunca apaga fotos ou registros locais; a escolha local pode recuperá-los na nuvem', async () => {
+    const cloud=new Cloud(), pc=makeDevice(cloud);await pc.open();
+    await pc.run("db.produtos.push({id:'produto-preservado',nome:'Produto fictício',itens:[],fotos:[{id:'foto-preservada',dados:'data:image/jpeg;base64,/9j/AA=='}]});saveDB()");
+    await pc.sync();const original=pc.get('db');
+    delete cloud.row.payload.dados.produtos[0].fotos;
+    await pc.sync();
+    assert.deepEqual(pc.get('db'),original);assert.ok(pc.get('syncConflito'));
+    assert.equal(cloud.writes.length,2);
+    await pc.run("resolverConflitoSync('local')");
+    assert.deepEqual(cloud.row.payload.dados,original);assert.equal(cloud.writes.length,3);
+    assert.equal(pc.get('syncConflito'),null);
+    cloud.row.payload.dados.produtos=[];await pc.sync();
+    assert.deepEqual(pc.get('db'),original);assert.ok(pc.get('syncConflito'));
+  });
+
+  await check('Atualizar durante uma consulta automática enfileira a leitura completa sem operações simultâneas', async () => {
+    const cloud=new Cloud(), pc=makeDevice(cloud);await pc.open();
+    let release, blocked=false;
+    pc.context.fetch=async(url,options)=>{
+      if(!blocked&&new URL(url).searchParams.get('select')==='version,updated_at'){
+        blocked=true;await new Promise(resolve=>{release=resolve;});
+      }
+      return cloud.fetch(url,options,pc);
+    };
+    const automatic=pc.run('checarAtualizacaoRemota(true)');
+    while(!release)await Promise.resolve();
+    const before=cloud.calls.length, manual=pc.run('sincronizarAgora()');release();
+    await Promise.all([automatic,manual]);
+    assert.equal(cloud.calls.slice(before).filter(c=>new URLSearchParams(c.query).get('select')?.includes('payload')).length,1);
+    assert.equal(pc.get('syncBusy'),false);assert.equal(cloud.maxWrites,1);
   });
 
   await check('Chaves secretas são rejeitadas antes de enviar credenciais', async () => {
     const pc = makeDevice(new Cloud());
     assert.throws(() => pc.run("validarConexaoNuvem('https://teste.supabase.co','sb_secret_proibida')"));
     assert.throws(() => pc.run("validarConexaoNuvem('http://outro.example','sb_publishable_teste')"));
+  });
+
+  await check('Logins diferentes ficam isolados até o convite; vincular carrega fotos sem sobrescrever o ateliê do titular', async () => {
+    const cloud=new Cloud(), owner=makeDevice(cloud), guest=makeDevice(cloud,{user:'00000000-0000-0000-0000-000000000002'});
+    await owner.open();owner.edit('Ateliê fictício do titular');
+    await owner.run("db.produtos.push({id:'produto-compartilhado',nome:'Produto fictício',itens:[],fotos:[{id:'foto-compartilhada',dados:'data:image/jpeg;base64,/9j/AA=='}]});saveDB()");
+    await owner.sync();await guest.open();
+    assert.equal(guest.get('db.produtos.length'),0);guest.edit('Dados fictícios separados');await guest.sync();
+    const originalGuest=clone(cloud.rows.get(guest.user)), writes=cloud.writes.length;
+    owner.context.code=await owner.run("apiNuvem('/rest/v1/rpc/criar_convite_papelaria',{method:'POST',body:{}})");
+    guest.context.code=owner.context.code;
+    await guest.run("apiNuvem('/rest/v1/rpc/entrar_atelie_papelaria',{method:'POST',body:{p_codigo:code}})");
+    await guest.sync();assert.deepEqual(guest.get('db'),owner.get('db'));
+    assert.equal(guest.get('nuvem.session.user.id'),guest.user);assert.equal(guest.get('nuvem.atelie'),USER);
+    assert.equal(guest.get('syncEstado.origem'),'nuvem:https://teste.supabase.co:'+USER);
+    assert.equal(cloud.writes.length,writes);assert.deepEqual(cloud.rows.get(guest.user),originalGuest);
+    guest.edit('Atualizado pelo outro login');await guest.sync();await owner.sync();
+    assert.deepEqual(owner.get('db'),guest.get('db'));assert.deepEqual(cloud.rows.get(guest.user),originalGuest);
+    assert.equal(owner.get('db.produtos[0].fotos[0].id'),'foto-compartilhada');
+  });
+
+  await check('Vínculo é resolvido novamente ao abrir com outro login, sem depender de um usuário fixo no HTML', async () => {
+    const cloud=new Cloud(), owner=makeDevice(cloud);await owner.open();owner.edit('Ateliê fictício compartilhado');await owner.sync();
+    const user='00000000-0000-0000-0000-000000000002';cloud.members.set(user,USER);
+    const guest=makeDevice(cloud,{user});await guest.open();
+    assert.deepEqual(guest.get('db'),owner.get('db'));assert.equal(guest.get('nuvem.atelie'),USER);
+    assert.equal(cloud.writes.length,2);
+    const reopened=makeDevice(cloud,{user,storage:guest.storage});await reopened.open();
+    assert.deepEqual(reopened.get('db'),owner.get('db'));assert.equal(reopened.get('syncEstado.origem'),guest.get('syncEstado.origem'));
+  });
+
+  await check('Revogar o vínculo preserva a cópia local e interrompe envios em vez de trocar silenciosamente o destino', async () => {
+    const cloud=new Cloud(), owner=makeDevice(cloud);await owner.open();
+    const user='00000000-0000-0000-0000-000000000002';cloud.members.set(user,USER);
+    const guest=makeDevice(cloud,{user});await guest.open();guest.edit('Alteração fictícia pendente');
+    const original=guest.get('db'), writes=cloud.writes.length;cloud.members.delete(user);await guest.sync();
+    assert.deepEqual(guest.get('db'),original);assert.equal(guest.get('syncEstado.pendente'),true);
+    assert.ok(guest.get('syncErro').includes('acesso ao ateliê mudou'));assert.equal(cloud.writes.length,writes);
+  });
+
+  await check('Nuvem ainda com SQL antigo mantém o login individual; atualizar o SQL habilita o compartilhamento', async () => {
+    const cloud=new Cloud();cloud.sharing=false;const owner=makeDevice(cloud);await owner.open();
+    owner.edit('Ateliê fictício legado');await owner.sync();assert.equal(owner.get('syncErro'),'');
+    assert.equal(owner.get('nuvem.compartilhamentoDisponivel'),false);
+    cloud.sharing=true;await owner.sync();assert.equal(owner.get('nuvem.compartilhamentoDisponivel'),true);
+    assert.equal(owner.get('db.config.nomeLoja'),'Ateliê fictício legado');
+  });
+
+  await check('Se o vínculo mudar entre a leitura e a gravação, a API rejeita o destino e mantém a edição pendente', async () => {
+    const cloud=new Cloud(), owner=makeDevice(cloud);await owner.open();
+    const user='00000000-0000-0000-0000-000000000002';cloud.members.set(user,USER);
+    const guest=makeDevice(cloud,{user});await guest.open();guest.edit('Alteração fictícia durante mudança de acesso');
+    const original=guest.get('db'), remote=clone(cloud.row), writes=cloud.writes.length;
+    cloud.beforeWrite=async()=>{cloud.members.delete(user);};await guest.sync();
+    assert.deepEqual(guest.get('db'),original);assert.equal(guest.get('syncEstado.pendente'),true);
+    assert.ok(guest.get('syncErro'));assert.deepEqual(cloud.row,remote);assert.equal(cloud.rows.has(user),false);
+    assert.equal(cloud.writes.length,writes+1);assert.equal(cloud.writes.at(-1).body.p_atelie,USER);
+  });
+
+  await check('Ateliê vinculado sem resposta de dados não recebe uma cópia vazia ou antiga do convidado', async () => {
+    const cloud=new Cloud(), owner=makeDevice(cloud);await owner.open();
+    const user='00000000-0000-0000-0000-000000000002';cloud.members.set(user,USER);
+    const guest=makeDevice(cloud,{user});guest.run('nuvem.aguardandoAtelie=true');cloud.row=null;
+    const original=guest.get('db'), writes=cloud.writes.length;await guest.open();
+    assert.deepEqual(guest.get('db'),original);assert.ok(guest.get('syncErro'));assert.equal(cloud.writes.length,writes);
   });
 
   await check('Interface conectada é curta; iPhone não recebe popups de importação', async () => {

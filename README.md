@@ -21,10 +21,13 @@ O iCloud pode continuar sendo usado para guardar os backups exportados.
 ## ☁️ Sincronização automática
 
 - Configuração inicial uma vez por navegador: URL e chave pública do projeto, e-mail e senha do usuário do app.
+- Logins diferentes podem acessar o mesmo ateliê por convite, em **Sincronização → Compartilhar ateliê**. Reaplique o SQL atualizado uma vez; veja [como vincular as contas](SINCRONIZACAO.md#compartilhar-com-outro-login).
 - Ao abrir ou voltar ao app, os dados mais recentes são carregados. Enquanto aberto, o app verifica a cada 30 segundos.
 - Alterações salvas são enviadas automaticamente; offline, ficam pendentes até a conexão voltar ou a próxima abertura.
-- **☁️ Atualizar** verifica com um clique. O iPhone não precisa procurar, importar ou substituir arquivos.
+- Ao abrir e ao tocar em **☁️ Atualizar**, o app lê todos os dados da nuvem, incluindo fotos. A consulta periódica reutiliza a cópia local quando a versão não mudou.
+- Em **Sincronização → Conexão deste aparelho**, confira as quantidades locais e da última leitura completa da nuvem, além da conta e do projeto conectados.
 - Alterações diferentes nos dois aparelhos pedem uma escolha antes de substituir os dados.
+- Se a mesma versão da nuvem devolver registros ou fotos faltantes, o app preserva a cópia local e oferece a escolha com as quantidades de cada lado.
 
 O projeto gratuito precisa ser criado e receber o script [supabase-sync.sql](supabase-sync.sql).
 Veja o [guia de ativação, limites do plano e recuperação](SINCRONIZACAO.md).
@@ -94,7 +97,8 @@ JPEG com até 2560 pixels no maior lado e 1 MB por foto, com qualidade de 90 a 9
 sem os metadados do arquivo original. Elas fazem parte dos dados privados, da sincronização existente
 e do backup; não são publicadas no Git nem em uma galeria externa.
 Cadastros com fotos usam IndexedDB para dados e estado de sincronização, evitando
-o limite do localStorage. A nuvem só baixa os dados completos quando a versão muda.
+o limite do localStorage. A abertura e a atualização manual conferem os dados completos;
+as verificações periódicas baixam o conteúdo novamente quando a versão muda.
 Para atualizar imagens salvas com a compressão anterior, use **Trocar foto** e
 selecione o arquivo original. A troca preserva a posição da foto e só é gravada
 ao salvar o produto. O PDF e o compartilhamento usam a imagem salva completa,
@@ -169,6 +173,10 @@ node --input-type=module -e "import('./tests/calculos.test.mjs').then(async m =>
 O teste `tests/supabase-sync.test.sql` usa um PostgreSQL descartável com os dois scripts
 em `/tmp`. Ele simula os papéis do Supabase e verifica conflitos e isolamento de usuários;
 não deve ser executado no projeto real.
+Também pode ser executado em memória com `@electric-sql/pglite` instalado:
+`node --input-type=module -e "import('./tests/supabase-sync.test.mjs').then(async m => console.log(await m.runTests()))"`.
+Confere versão atômica, vínculos de logins distintos, convites inválidos, expirados e
+consumidos, revogação, isolamento e preservação dos registros anteriores.
 
 Com Python, Playwright e Chrome ou Chromium, execute `python tests/interface.test.py`.
 Os cenários verificam cadastro de materiais dentro do produto, preservação dos
@@ -196,3 +204,8 @@ a versão publicada em um navegador isolado, sem conta de nuvem.
 paginação com imagens, botões do catálogo e compartilhamento de fotos com
 alternativa para baixar e anexar no WhatsApp. Usa apenas imagens fictícias e
 aceita as mesmas variáveis dos testes de fotos.
+
+`python tests/sync-interface.test.py` verifica a transferência de fotos reais e
+cadastros entre navegadores isolados, convite para outro login, armazenamento
+privado e recuperação de cópias incompletas. Requer Pillow e Playwright; usa uma nuvem fictícia e aceita
+`PRIARTE_ENGINE=webkit`, `PRIARTE_QA_DIR` e `PRIARTE_APP_URL`.
