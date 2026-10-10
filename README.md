@@ -72,6 +72,15 @@ na barra inferior; Configurações fica na engrenagem do cabeçalho. As listas v
 cartões e os formulários se ajustam à tela. Instalação, tema, backup e ajustes de
 precificação ficam em Configurações.
 
+A aba **Indicadores** permite filtrar os últimos 6 ou 12 meses, o ano atual ou
+todos os registros. Mostra vendas dos pedidos entregues, valor médio por pedido,
+aprovação dos orçamentos e trabalhos em andamento. Os gráficos detalham vendas,
+produtos mais vendidos e situações dos pedidos e orçamentos. Os valores de venda
+usam os preços históricos de cada item; pedidos cancelados não entram nas vendas
+e orçamentos aprovados não são contados novamente como receita. O período usa a
+data de emissão dos documentos, e o estoque sempre mostra a posição atual.
+Os gráficos funcionam offline e não usam serviços externos.
+
 Em **Materiais**, a aba **Cadastro** mostra todos os materiais, com busca, unidade,
 custo, fornecedor e ficha de consulta. A aba **Estoque** reúne compras, ajustes e
 filtros de reposição. No produto, **Adicionar material → Novo material** permite
@@ -154,3 +163,7 @@ permite guardar as prévias em uma pasta privada fora do Git.
 frete, validação dos valores, preços manuais e edição de orçamentos. Os testes de
 cálculos e orçamento também aceitam `PRIARTE_ENGINE=webkit` para verificar o motor
 usado pelo Safari, além do Chrome/Chromium.
+
+`python tests/indicadores.test.py` confere os totais históricos, filtros, gráficos
+interativos, reposição e navegação responsiva com dados fictícios. Também aceita
+`PRIARTE_ENGINE=webkit` e `PRIARTE_QA_DIR`.

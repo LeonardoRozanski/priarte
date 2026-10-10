@@ -62,6 +62,7 @@
   .btn.sec{background:var(--accent-soft);color:var(--accent)}
   .btn.neutro{background:color-mix(in srgb,var(--muted) 15%,var(--panel));color:var(--ink)}
   .btn.perigo{background:color-mix(in srgb,var(--red) 15%,var(--panel));color:var(--red)}
+  .btn.perigo .icone{width:19px;height:19px;pointer-events:none}
   .btn.mini{padding:8px 10px;font-size:.85rem;min-height:40px}
   table.grid{width:100%;border-collapse:collapse;background:var(--panel);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
   table.grid th{background:color-mix(in srgb,var(--muted) 14%,var(--panel));text-align:left;padding:9px 10px;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
@@ -317,6 +318,43 @@
     .cf-linha{grid-template-columns:minmax(0,1fr) 88px 40px;gap:6px}
     .toast{bottom:calc(84px + var(--safe-bottom))}
   }
+  .indicadores-periodo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .indicadores-periodo label{font-size:.85rem;color:var(--muted)}
+  .indicadores-nota{margin:-8px 0 20px;color:var(--muted);font-size:.8rem}
+  .indicadores-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .indicadores-cards .valor{font-size:clamp(1.25rem,2.4vw,1.85rem);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+  .indicadores-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+  .indicadores-grid .painel{margin:0;min-width:0}
+  .indicadores-grid .painel-amplo{grid-column:1/-1}
+  .indicador-descricao{font-size:.8rem;color:var(--muted);margin:6px 0 18px}
+  .grafico-meses{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 2px;background:repeating-linear-gradient(to top,transparent 0,transparent 49px,var(--line) 50px,transparent 51px);background-size:100% 202px;background-repeat:no-repeat}
+  .grafico-mes{flex:1;min-width:38px;border:0;border-radius:8px;background:none;color:var(--muted);font:inherit;font-size:.73rem;padding:0 4px 8px;cursor:pointer;display:grid;gap:8px;text-align:center}
+  .grafico-mes:hover,.grafico-mes[aria-pressed=true]{background:var(--accent-soft);color:var(--ink)}
+  .grafico-area-barra{height:190px;display:flex;align-items:flex-end;justify-content:center}
+  .grafico-barra{display:block;width:100%;max-width:66px;min-height:2px;background:var(--accent);border-radius:6px 6px 0 0}
+  .grafico-mes[aria-pressed=true] .grafico-barra{background:var(--teal)}
+  .grafico-detalhe{padding:12px 14px;background:var(--input);border:1px solid var(--line);border-radius:10px;margin-top:14px;font-size:.88rem;min-height:50px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+  .grafico-lista{display:grid;gap:18px;margin:0;padding:0;list-style:none}
+  .grafico-linha{display:grid;gap:7px;min-width:0}
+  .grafico-linha-topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:.9rem}
+  .grafico-linha-nome{min-width:0;overflow-wrap:anywhere}
+  .grafico-linha-topo strong{flex-shrink:0;font-size:.88rem;font-variant-numeric:tabular-nums}
+  .grafico-trilho{height:9px;background:var(--input);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .grafico-preenchimento{height:100%;border-radius:999px;background:var(--cor-grafico,var(--accent))}
+  .grafico-produto{padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;min-height:44px}
+  .grafico-produto:hover{color:var(--accent)}
+  .indicadores-estoque{display:grid;gap:12px}
+  .indicadores-estoque .trabalho{padding:12px 0}
+  @media(max-width:760px){
+    .indicadores-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .indicadores-cards .valor{font-size:1.4rem;letter-spacing:-.03em}
+    .indicadores-grid{grid-template-columns:1fr;gap:14px}
+    .indicadores-periodo{width:100%}
+    .indicadores-periodo select{flex:1;width:100%}
+    nav.tabs button{font-size:.62rem}
+    .grafico-meses{gap:3px}
+    .grafico-mes{min-width:34px;padding-inline:2px}
+  }
   @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
   @page{size:A4;margin:16mm 15mm}
   @media print{
@@ -361,6 +399,7 @@
     <button data-view="produtos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h11l4 4v14H5Z"/><path d="M15 3v5h5M9 12h7M9 16h5"/></svg>Produtos</button>
     <button data-view="orcamentos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg>Orçamentos</button>
     <button data-view="pedidos"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 12l3 3 5-6"/></svg>Pedidos</button>
+    <button data-view="indicadores"><svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 3v17h17M8 16v-5M13 16V7M18 16V4"/></svg>Indicadores</button>
     <button data-view="config">Configurações</button>
   </nav>
   <button class="btn neutro mini" id="btnSync" onclick="sincronizarAgora()" title="Sincronização de dados entre dispositivos">☁️ Conectar</button>
@@ -372,6 +411,7 @@
   <section id="view-produtos" class="view"></section>
   <section id="view-orcamentos" class="view"></section>
   <section id="view-pedidos" class="view"></section>
+  <section id="view-indicadores" class="view"></section>
   <section id="view-config" class="view"></section>
 </main>
 <div class="overlay" id="overlay"><div class="modal" id="modal" role="dialog" aria-modal="true" tabindex="-1"></div></div>
@@ -759,6 +799,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 /* ================= util ================= */
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
+const ICONE_LIXEIRA='<svg class="icone" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
 const BRL = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const BRL_UNITARIO = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:6});
 const fmtBRL = v => BRL.format(arredondarValor(v));
@@ -796,7 +837,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.09-11';
+const APP_VERSAO='2026.10.09-12';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -991,6 +1032,7 @@ function render(){
   else if(view==='produtos')renderProdutos();
   else if(view==='orcamentos')renderOrcamentos();
   else if(view==='pedidos')renderPedidos();
+  else if(view==='indicadores')renderIndicadores();
   else if(view==='config')renderConfig();
   prepararInterface($('#view-'+view));
 }
@@ -1019,7 +1061,7 @@ function prepararInterface(raiz){
   raiz.querySelectorAll('.busca').forEach(input=>input.setAttribute('aria-label',input.placeholder));
   raiz.querySelectorAll('button').forEach(b=>{
     if(b.hasAttribute('aria-label'))return;
-    if(!['✕','✖','✗','✘'].includes(b.textContent.trim()))return;
+    if(!b.classList.contains('perigo')||b.textContent.trim())return;
     const nome=b.closest('tr')?.cells[0]?.textContent.trim()||'';
     b.setAttribute('aria-label',(b.getAttribute('onclick')?.startsWith('excluir')?'Excluir':'Remover')+(nome?' '+nome:''));
   });
@@ -1102,6 +1144,118 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ================= dashboard ================= */
+/* ================= indicadores ================= */
+let periodoIndicadores='6';
+function dataIndicador(documento){
+  for(const valor of [documento.data,(documento.criadoEm||'').slice(0,10)]){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(valor||''))continue;
+    const data=new Date(valor+'T12:00:00');
+    if(!Number.isNaN(data.getTime())&&data.getFullYear()===Number(valor.slice(0,4))&&data.getMonth()+1===Number(valor.slice(5,7))&&data.getDate()===Number(valor.slice(8,10)))return valor;
+  }
+  return '';
+}
+function calcularIndicadores(periodo='6',hoje=hojeISO()){
+  const ano=Number(hoje.slice(0,4)),mes=Number(hoje.slice(5,7))-1,mesAtual=ano*12+mes;
+  const chaveMes=indice=>Math.floor(indice/12)+'-'+pad2(indice%12+1);
+  const inicio=periodo==='todos'?'':periodo==='ano'?ano+'-01-01':chaveMes(mesAtual-(periodo==='12'?11:5))+'-01';
+  const noPeriodo=d=>periodo==='todos'||(dataIndicador(d)>=inicio&&dataIndicador(d)<=hoje);
+  const pedidos=db.pedidos.filter(noPeriodo),orcamentos=db.orcamentos.filter(noPeriodo);
+  const entregues=pedidos.filter(p=>p.status==='entregue');
+  const ativos=pedidos.filter(p=>['pendente','em_producao','pronto'].includes(p.status));
+  const abertos=orcamentos.filter(o=>o.status==='aberto');
+  const aprovados=orcamentos.filter(o=>o.status==='aprovado').length;
+  const decididos=aprovados+orcamentos.filter(o=>o.status==='perdido').length;
+  const vendas=somarValores(entregues.map(totalDocumento));
+  const datas=[...pedidos,...orcamentos].map(dataIndicador).filter(Boolean);
+  const indices=datas.map(d=>Number(d.slice(0,4))*12+Number(d.slice(5,7))-1);
+  const primeiro=periodo==='todos'?Math.min(mesAtual,...indices):Number(inicio.slice(0,4))*12+Number(inicio.slice(5,7))-1;
+  const ultimo=periodo==='todos'?Math.max(mesAtual,...indices):mesAtual;
+  const anual=ultimo-primeiro>=12;
+  const chaves=anual?[...new Set([String(ano),...datas.map(d=>d.slice(0,4))])].sort():Array.from({length:ultimo-primeiro+1},(_,i)=>chaveMes(primeiro+i));
+  const serie=chaves.map(chave=>{
+    const data=anual?null:new Date(Number(chave.slice(0,4)),Number(chave.slice(5,7))-1,15);
+    return {chave,rotulo:anual?chave:data.toLocaleDateString('pt-BR',{month:'short'}).replace('.','')+'/'+chave.slice(2,4),
+      nome:anual?chave:data.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),centavos:0,pedidos:0};
+  });
+  if(entregues.some(p=>!dataIndicador(p)))serie.push({chave:'sem-data',rotulo:'Sem data',nome:'Pedidos sem data',centavos:0,pedidos:0});
+  const porData=new Map(serie.map(m=>[m.chave,m]));
+  const produtos=new Map();
+  for(const pedido of entregues){
+    const data=dataIndicador(pedido),chave=data?(anual?data.slice(0,4):data.slice(0,7)):'sem-data';
+    const grupo=porData.get(chave);if(grupo){grupo.centavos+=centavos(totalDocumento(pedido));grupo.pedidos++;}
+    for(const item of (pedido.itens||[])){
+      const chave=item.produtoId?'id:'+item.produtoId:'nome:'+(item.nome||'Item avulso');
+      if(!produtos.has(chave))produtos.set(chave,{nome:item.nome||'Item avulso',produtoId:item.produtoId||null,qtd:0,centavos:0});
+      const produto=produtos.get(chave);produto.qtd+=parseNum(item.qtd);produto.centavos+=centavos(subtotalDoc(item));
+    }
+  }
+  const ranking=[...produtos.values()].map(p=>({...p,total:p.centavos/100})).sort((a,b)=>b.total-a.total||b.qtd-a.qtd||a.nome.localeCompare(b.nome,'pt-BR')).slice(0,5);
+  const controlados=db.materiais.filter(m=>m.controlaEstoque!==false);
+  const reposicao=materiaisEmAlerta().sort((a,b)=>parseNum(a.estoqueAtual)-parseNum(b.estoqueAtual)||a.nome.localeCompare(b.nome,'pt-BR'));
+  return {inicio,fim:periodo==='todos'?'':hoje,pedidos,orcamentos,entregues,ativos,abertos,vendas,
+    ticket:entregues.length?arredondarValor(vendas/entregues.length):null,
+    aprovados,decididos,conversao:decididos?aprovados/decididos*100:null,
+    valorAtivos:somarValores(ativos.map(totalDocumento)),valorAbertos:somarValores(abertos.map(totalDocumento)),
+    anual,serie:serie.map(m=>({...m,total:m.centavos/100})),ranking,reposicao,
+    valorEstoque:somarValores(controlados.map(valorEmEstoque)),materiaisControlados:controlados.length};
+}
+function graficoSituacoes(registros,situacoes){
+  const total=registros.length;
+  if(!total)return '<div class="vazio"><strong>Nenhum registro neste período</strong>Os números aparecem conforme você cadastra seus trabalhos.</div>';
+  return '<ul class="grafico-lista">'+situacoes.map(([status,nome,cor])=>{
+    const quantidade=registros.filter(r=>r.status===status).length,percentual=quantidade/total*100;
+    return `<li class="grafico-linha"><div class="grafico-linha-topo"><span class="grafico-linha-nome">${nome}</span><strong>${quantidade} · ${fmtQtd(arredondarValor(percentual))}%</strong></div>
+      <div class="grafico-trilho" aria-hidden="true"><div class="grafico-preenchimento" style="width:${percentual}%;--cor-grafico:var(--${cor})"></div></div></li>`;
+  }).join('')+'</ul>';
+}
+function renderIndicadores(){
+  const d=calcularIndicadores(periodoIndicadores),maximo=Math.max(0,...d.serie.map(m=>m.total));
+  const ultimoComVenda=d.serie.findLastIndex(m=>m.pedidos>0),selecionado=ultimoComVenda<0?d.serie.length-1:ultimoComVenda;
+  const porcentagem=v=>v.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
+  $('#view-indicadores').innerHTML=`
+    <div class="barra"><h2>Indicadores</h2><div class="spacer"></div><div class="indicadores-periodo"><label for="periodoIndicadores">Período</label><select id="periodoIndicadores">
+      ${[['6','Últimos 6 meses'],['12','Últimos 12 meses'],['ano','Este ano'],['todos','Todos os registros']].map(([valor,nome])=>`<option value="${valor}" ${periodoIndicadores===valor?'selected':''}>${nome}</option>`).join('')}</select></div></div>
+    <p class="indicadores-nota">${d.inicio?fmtData(d.inicio)+' a '+fmtData(d.fim)+' · ':''}Pedidos e orçamentos pela data de emissão. Estoque na posição atual.</p>
+    <div class="cards indicadores-cards">
+      <div class="card" style="border-left-color:var(--green)"><div class="rotulo">Vendas entregues</div><div class="valor" data-indicador="vendas">${fmtBRL(d.vendas)}</div><div class="sub">${d.entregues.length} ${d.entregues.length===1?'pedido entregue':'pedidos entregues'}</div></div>
+      <div class="card"><div class="rotulo">Valor médio por pedido</div><div class="valor" data-indicador="ticket">${d.ticket===null?'—':fmtBRL(d.ticket)}</div><div class="sub">Somente os pedidos entregues</div></div>
+      <div class="card" style="border-left-color:var(--teal)"><div class="rotulo">Aprovação de orçamentos</div><div class="valor" data-indicador="conversao">${d.conversao===null?'—':porcentagem(d.conversao)}</div><div class="sub">${d.decididos?d.aprovados+' aprovados de '+d.decididos+' decididos':'Nenhum orçamento decidido'}</div></div>
+      <div class="card" style="border-left-color:var(--blue)"><div class="rotulo">Pedidos em andamento</div><div class="valor">${d.ativos.length}</div><div class="sub">${fmtBRL(d.valorAtivos)} em trabalhos</div></div>
+      <div class="card" style="border-left-color:var(--amber)"><div class="rotulo">Aguardando aprovação</div><div class="valor">${d.abertos.length}</div><div class="sub">${fmtBRL(d.valorAbertos)} em orçamentos</div></div>
+      <div class="card" style="border-left-color:var(--${d.reposicao.length?'amber':'green'})"><div class="rotulo">Valor em estoque</div><div class="valor">${fmtBRL(d.valorEstoque)}</div><div class="sub">${d.reposicao.length?d.reposicao.length+' '+(d.reposicao.length===1?'material':'materiais')+' para repor':'Sem alertas de reposição'}</div></div>
+    </div>
+    <div class="indicadores-grid">
+      <div class="painel painel-amplo"><div class="painel-titulo"><h3>Vendas por ${d.anual?'ano':'mês'}</h3><span class="muted">Pedidos entregues</span></div>
+        <p class="indicador-descricao">Selecione uma barra para ver os detalhes.</p>
+        <div class="grafico-meses" role="group" aria-label="Gráfico de vendas por ${d.anual?'ano':'mês'}">${d.serie.map((m,i)=>`<button type="button" class="grafico-mes" data-mes="${i}" aria-pressed="${i===selecionado}" aria-label="${esc(m.nome)}: ${fmtBRL(m.total)}, ${m.pedidos} pedidos entregues">
+          <span class="grafico-area-barra" aria-hidden="true"><span class="grafico-barra" style="height:${maximo>0?Math.max(1,m.total/maximo*100):0}%"></span></span><span>${esc(m.rotulo)}</span></button>`).join('')}</div>
+        <div class="grafico-detalhe" id="detalheVendas" role="status" aria-live="polite"></div>
+        ${!d.entregues.length?'<p class="indicador-descricao">Ainda não há pedidos entregues neste período.</p>':''}</div>
+      <div class="painel"><h3>Produtos mais vendidos</h3><p class="indicador-descricao">Por valor vendido nos pedidos entregues.</p>
+        ${d.ranking.length?'<ol class="grafico-lista">'+d.ranking.map((p,i)=>`<li class="grafico-linha"><div class="grafico-linha-topo"><span class="grafico-linha-nome">${produtoById(p.produtoId)?`<button class="grafico-produto" data-ranking="${i}">${esc(p.nome)}</button>`:esc(p.nome)}</span><strong>${fmtBRL(p.total)}</strong></div>
+          <div class="grafico-trilho" aria-hidden="true"><div class="grafico-preenchimento" style="width:${d.ranking[0].total>0?Math.max(0,p.total/d.ranking[0].total*100):0}%"></div></div><span class="muted">${fmtQtd(p.qtd)} ${p.qtd===1?'unidade vendida':'unidades vendidas'}</span></li>`).join('')+'</ol>':'<div class="vazio"><strong>Ainda não há produtos vendidos</strong>Os itens dos pedidos entregues aparecem aqui.</div>'}</div>
+      <div class="painel"><h3>Situação dos orçamentos</h3><p class="indicador-descricao">${d.orcamentos.length} no período selecionado.</p>
+        ${graficoSituacoes(d.orcamentos,[['aberto','Aguardando aprovação','amber'],['aprovado','Aprovados','green'],['perdido','Não aprovados','gray']])}</div>
+      <div class="painel"><div class="painel-titulo"><h3>Situação dos pedidos</h3><button class="link-acao" onclick="showView('pedidos')">Ver pedidos →</button></div>
+        <p class="indicador-descricao">${d.pedidos.length} no período selecionado.</p>
+        ${graficoSituacoes(d.pedidos,[['pendente','A produzir','amber'],['em_producao','Em produção','blue'],['pronto','Prontos','teal'],['entregue','Entregues','green'],['cancelado','Cancelados','red']])}</div>
+      <div class="painel"><div class="painel-titulo"><h3>Reposição de materiais</h3><button class="link-acao" onclick="abrirEstoqueMateriais()">Ver estoque →</button></div>
+        <p class="indicador-descricao">Posição atual · ${d.materiaisControlados} materiais com estoque físico.</p>
+        <div class="indicadores-estoque">${d.reposicao.length?d.reposicao.slice(0,5).map(m=>`<button class="trabalho" data-repor="${esc(m.id)}"><span class="trabalho-info"><span class="trabalho-nome">${esc(m.nome)}</span><span class="muted">Mínimo: ${fmtQtd(m.estoqueMinimo)} ${esc(unidadeCurta(m.unidade))}</span></span><span class="trabalho-fim"><strong class="neg">${fmtQtd(m.estoqueAtual)} ${esc(unidadeCurta(m.unidade))}</strong></span></button>`).join(''):`<div class="vazio"><strong>${d.materiaisControlados?'Estoque em dia':'Nenhum estoque físico cadastrado'}</strong>${d.materiaisControlados?'Nenhum material precisa de reposição.':'Os alertas aparecem ao cadastrar materiais com controle de estoque.'}</div>`}</div>
+        ${d.reposicao.length>5?'<p class="indicador-descricao">Mais '+(d.reposicao.length-5)+' materiais para repor. Veja a lista completa no estoque.</p>':''}</div>
+    </div>`;
+  $('#periodoIndicadores').addEventListener('change',ev=>{periodoIndicadores=ev.target.value;render();});
+  const escolherMes=indice=>{
+    const m=d.serie[indice];
+    $$('.grafico-mes').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.mes)===indice)));
+    $('#detalheVendas').textContent=m.nome+' · '+fmtBRL(m.total)+' · '+m.pedidos+' '+(m.pedidos===1?'pedido entregue':'pedidos entregues');
+  };
+  $$('.grafico-mes').forEach(b=>b.addEventListener('click',()=>escolherMes(Number(b.dataset.mes))));
+  escolherMes(selecionado);
+  $$('[data-ranking]').forEach(b=>b.addEventListener('click',()=>fichaProduto(d.ranking[Number(b.dataset.ranking)].produtoId)));
+  $$('[data-repor]').forEach(b=>b.addEventListener('click',()=>abrirCompra(b.dataset.repor)));
+}
+
 function renderDashboard(){
   const abertos=db.orcamentos.filter(o=>o.status==='aberto');
   const ativos=db.pedidos.filter(p=>['pendente','em_producao','pronto'].includes(p.status));
@@ -1170,7 +1324,7 @@ function renderMateriais(){
       <td>${esc(unidadeNome(m.unidade))}</td><td class="num">${fmtCustoUnit(custoUnit(m))}</td>
       <td class="muted">${esc(m.fornecedor||'Não informado')}</td>
       <td class="num"><button class="btn mini neutro" onclick="abrirFormMaterial('${m.id}')">Editar</button>
-      <button class="btn mini perigo" onclick="excluirMaterial('${m.id}')">✕</button></td></tr>`;
+      <button class="btn mini perigo" onclick="excluirMaterial('${m.id}')" aria-label="Excluir ${esc(m.nome)}">${ICONE_LIXEIRA}</button></td></tr>`;
     return `<tr>
       <td><button class="btn mini sec" onclick="fichaMaterial('${m.id}')">${esc(m.nome)}</button><div><span class="badge b-${stClass}">${stLabel}</span></div></td>
       <td class="num">${ctrl?`<strong class="${est<0?'neg':''}">${fmtQtd(est)}</strong> <span class="muted">${esc(m.unidade)}</span>`:'<span class="muted">Sem estoque físico</span>'}</td>
@@ -1326,7 +1480,7 @@ function abrirLotes(id){
       <td class="num">${fmtCustoUnit(l.valorUnitario)}</td>
       <td class="muted">${esc(l.fornecedor||'')}</td>
       <td class="muted">${esc(l.obs||'')}</td>
-      <td class="num">${l.qtdRestante>=l.quantidade-0.00001?`<button class="btn mini perigo" onclick="excluirLote('${l.id}','${id}')">✕</button>`:''}</td></tr>`;
+      <td class="num">${l.qtdRestante>=l.quantidade-0.00001?`<button class="btn mini perigo" onclick="excluirLote('${l.id}','${id}')" aria-label="Excluir compra de ${fmtData(l.data)}">${ICONE_LIXEIRA}</button>`:''}</td></tr>`;
   }).join(''):'<tr><td colspan="8" class="muted">Nenhum lote registrado.</td></tr>';
   const ctrl=m.controlaEstoque!==false;
   abrirModal(`<h3>Histórico de compras · ${esc(m.nome)}</h3>
@@ -1367,7 +1521,7 @@ function renderProdutos(){
       <td class="num">${fmtBRL(lucroProduto(p))}</td>
       <td class="num"><strong>${fmtBRL(precoFinal(p))}</strong>${p.precoFinalManual!=null?' <span class="muted" title="Preço manual">✎</span>':''}</td>
       <td class="num"><button class="btn mini neutro" onclick="abrirFormProduto('${p.id}')">Editar</button>
-      <button class="btn mini perigo" onclick="excluirProduto('${p.id}')">✕</button></td></tr>`;}).join('')||'<tr><td colspan="5" class="muted">Nenhum produto encontrado.</td></tr>'}</tbody></table>
+      <button class="btn mini perigo" onclick="excluirProduto('${p.id}')" aria-label="Excluir ${esc(p.nome)}">${ICONE_LIXEIRA}</button></td></tr>`;}).join('')||'<tr><td colspan="5" class="muted">Nenhum produto encontrado.</td></tr>'}</tbody></table>
     <p class="contagem">${lista.length} de ${db.produtos.length} produtos</p>`;
   const b=$('#buscaProd');b.addEventListener('input',()=>{filtroProd=b.value;render();const nb=$('#buscaProd');nb.focus();nb.setSelectionRange(nb.value.length,nb.value.length);});
 }
@@ -1424,7 +1578,7 @@ function desenharReceitaProduto(){
         <small class="muted">${m?fmtCustoUnit(custoUnit(m))+' / '+esc(unidadeCurta(m.unidade)):'Selecione um material cadastrado.'}</small></div>
       <div class="campo receita-quantidade"><label>Quantidade${m?' ('+esc(unidadeCurta(m.unidade))+')':''}</label><input data-idx="${idx}" class="inpQtd" inputmode="decimal" value="${esc(String(it.qtd??1).replace('.',','))}" aria-label="Quantidade de ${esc(m?.nome||'material')}"></div>
       <div class="receita-custo"><span class="muted">Custo</span><strong class="receita-subtotal">${m?fmtBRL(custoUnit(m)*it.qtd):'—'}</strong></div>
-      <button type="button" class="btn mini perigo btn-remover" onclick="remItemReceita(${idx})" aria-label="Remover ${esc(m?.nome||'material')} do produto">✕</button>
+      <button type="button" class="btn mini perigo btn-remover" onclick="remItemReceita(${idx})" aria-label="Remover ${esc(m?.nome||'material')} do produto">${ICONE_LIXEIRA}</button>
     </div>`;
   }).join('')||'<div class="vazio"><strong>Nenhum material adicionado</strong>Selecione um material ou cadastre um novo.</div>';
   prepararInterface(lista);
@@ -1564,7 +1718,7 @@ function desenharFormDoc(){
     <td style="width:90px"><input inputmode="decimal" value="${it.qtd}" data-idx="${idx}" class="docQtd" style="width:70px" ${travado?'disabled':''}></td>
     <td style="width:120px"><input inputmode="decimal" value="${parseNum(it.precoUnit).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:12,useGrouping:false})}" data-idx="${idx}" class="docPreco" style="width:105px" ${travado?'disabled':''}></td>
     <td class="num" id="subDoc${idx}">${fmtBRL(subtotalDoc(it))}</td>
-    <td style="width:40px">${travado?'':`<button type="button" class="btn mini perigo" onclick="remItemDoc(${idx})">✕</button>`}</td></tr>`).join('');
+    <td style="width:40px">${travado?'':`<button type="button" class="btn mini perigo" onclick="remItemDoc(${idx})" aria-label="Remover ${esc(it.nome)} do ${tipo==='orcamento'?'orçamento':'pedido'}">${ICONE_LIXEIRA}</button>`}</td></tr>`).join('');
   abrirModal(`<h3>${d.id?'Editar':'Novo'} ${titulo}${d.numero?' — '+esc(d.numero):''}</h3>
   <form onsubmit="return salvarDoc(event)">
     <div class="formgrid">
@@ -1705,13 +1859,13 @@ function verDoc(tipo,id){
     botoes+=`<button class="btn sec" onclick="imprimirDoc('orcamento','${d.id}')">Salvar PDF</button>
     <button class="btn sec" onclick="abrirMensagemWhatsApp('${d.id}')">Mensagem WhatsApp</button>`;
     outrasAcoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('orcamento','${d.id}')">Editar orçamento</button>
-    <button class="btn perigo" onclick="excluirDoc('orcamento','${d.id}')">Excluir</button>`;
+    <button class="btn perigo" onclick="excluirDoc('orcamento','${d.id}')">${ICONE_LIXEIRA}Excluir</button>`;
   }else{
     if(PROXIMO_PED[d.status])botoes+=`<button class="btn" onclick="avancarPedido('${d.id}',true)">→ ${STATUS_PED[PROXIMO_PED[d.status]]}</button>`;
     botoes+=`<button class="btn sec" onclick="imprimirDoc('pedido','${d.id}')">Salvar PDF</button>`;
     if(d.status!=='cancelado'&&d.status!=='entregue')outrasAcoes+=`<button class="btn neutro" onclick="cancelarPedido('${d.id}')">Cancelar pedido</button>`;
     outrasAcoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('pedido','${d.id}')">Editar pedido</button>
-    <button class="btn perigo" onclick="excluirDoc('pedido','${d.id}')">Excluir</button>`;
+    <button class="btn perigo" onclick="excluirDoc('pedido','${d.id}')">${ICONE_LIXEIRA}Excluir</button>`;
   }
   const prazoCampo=!ehOrc?`<div class="campo" style="max-width:200px;margin-top:10px"><label>Prazo de entrega</label><input type="date" value="${d.prazo||''}" onchange="salvarPrazo('${d.id}',this.value)"></div>`:'';
   abrirModal(`<h3>${ehOrc?'Orçamento':'Pedido'} ${esc(d.numero)} ${statusBadge}</h3>
@@ -1969,7 +2123,7 @@ function renderConfig(){
           <div id="listaCF">${c.custosFixos.map(cf=>`<div class="formgrid cf-linha">
             <div class="campo"><input class="cfNome" value="${esc(cf.nome)}" placeholder="Despesa" aria-label="Nome da despesa"></div>
             <div class="campo"><input class="cfValor" inputmode="decimal" value="${cf.valor}" placeholder="R$" aria-label="Valor mensal da despesa em reais"></div>
-            <div class="campo"><button type="button" class="btn mini perigo" aria-label="Remover despesa" onclick="marcarFormularioEditado(this);this.closest('.formgrid').remove()">✕</button></div>
+            <div class="campo"><button type="button" class="btn mini perigo" aria-label="Remover despesa" onclick="marcarFormularioEditado(this);this.closest('.formgrid').remove()">${ICONE_LIXEIRA}</button></div>
           </div>`).join('')}</div>
           <div class="acoes" style="margin-top:6px"><button type="button" class="btn mini neutro" onclick="addCustoFixo()">+ Adicionar despesa</button></div>
           <details><summary>Rateio das despesas na produção</summary>
@@ -2014,7 +2168,7 @@ function addCustoFixo(){
   const div=document.createElement('div');div.className='formgrid cf-linha';
   div.innerHTML=`<div class="campo"><input class="cfNome" placeholder="Despesa" aria-label="Nome da despesa"></div>
   <div class="campo"><input class="cfValor" inputmode="decimal" placeholder="R$" aria-label="Valor mensal da despesa em reais"></div>
-  <div class="campo"><button type="button" class="btn mini perigo" aria-label="Remover despesa" onclick="marcarFormularioEditado(this);this.closest('.formgrid').remove()">✕</button></div>`;
+  <div class="campo"><button type="button" class="btn mini perigo" aria-label="Remover despesa" onclick="marcarFormularioEditado(this);this.closest('.formgrid').remove()">${ICONE_LIXEIRA}</button></div>`;
   $('#listaCF').appendChild(div);
 }
 function salvarConfig(ev){
