@@ -39,7 +39,7 @@ class Cloud {
     if (parsed.pathname === '/auth/v1/logout') return response(200, null);
     if (this.unauthorized) return response(401, { message: 'Sessão inválida' });
     assert.ok(options.headers.Authorization?.startsWith('Bearer access-'));
-    if (parsed.pathname === '/rest/v1/papelaria_sync') return response(200, this.row ? [clone(this.row)] : []);
+    if (parsed.pathname === '/rest/v1/papelaria_sync') return response(200, this.row ? [parsed.searchParams.get('select') === 'version,updated_at' ? {version:this.row.version} : clone(this.row)] : []);
     if (parsed.pathname === '/rest/v1/rpc/salvar_papelaria') {
       this.activeWrites++; this.maxWrites = Math.max(this.maxWrites, this.activeWrites);
       try {
@@ -76,6 +76,7 @@ function makeDevice(cloud, { storage = new Storage(), cloudEnabled = true, handl
   });
   device.context = context;
   vm.runInContext(prefix + syncBlock, context);
+  context.gravarRegistroPrivado = async () => {};
   context.toast = text => device.messages.push(text);
   context.savedHandle = handle;
   vm.runInContext('dbSyncGet=async()=>savedHandle; dbSyncSet=async(_k,v)=>{savedHandle=v;}; loadDB();migrarDB();', context);
@@ -349,8 +350,31 @@ export async function runTests() {
 
   await check('Dados remotos inválidos não apagam o aparelho', async () => {
     const cloud = new Cloud(), pc = makeDevice(cloud); await pc.open(); const original = pc.get('db');
-    cloud.row.payload = { dados: { materiais: [] } }; await pc.sync();
+    cloud.row.payload = { dados: { materiais: [] } }; cloud.row.version++; await pc.sync();
     assert.deepEqual(pc.get('db'), original); assert.ok(pc.get('syncErro')); assert.equal(cloud.writes.length, 1);
+  });
+
+  await check('Fotos e ordem da foto principal sincronizam nos dois sentidos sem perder preços', async () => {
+    const cloud = new Cloud(), pc = makeDevice(cloud), iphone = makeDevice(cloud);
+    await pc.open(); await iphone.open();
+    await pc.run("db.produtos.push({id:'produto-fotos-teste',nome:'Produto fictício',precoFinalManual:12.34,itens:[],fotos:[{id:'foto-1',dados:'data:image/jpeg;base64,/9j/AA=='},{id:'foto-2',dados:'data:image/jpeg;base64,/9j/BB=='}]});saveDB()");
+    await pc.sync(); await iphone.sync();
+    assert.deepEqual(iphone.get('db.produtos[0].fotos'),pc.get('db.produtos[0].fotos'));
+    await iphone.run("db.produtos[0].fotos.reverse();db.produtos[0].fotos.push({id:'foto-3',dados:'data:image/jpeg;base64,/9j/CC=='});saveDB()");
+    await iphone.sync(); await pc.sync();
+    assert.deepEqual(pc.get('db.produtos[0].fotos.map(f=>f.id)'),['foto-2','foto-1','foto-3']);
+    assert.equal(pc.get('db.produtos[0].precoFinalManual'),12.34);
+    await pc.run('db.produtos[0].fotos.splice(1,1);saveDB()');await pc.sync();await iphone.sync();
+    assert.deepEqual(iphone.get('db.produtos[0].fotos.map(f=>f.id)'),['foto-2','foto-3']);
+  });
+
+  await check('Verificações sem mudança baixam apenas a versão; novos dados recebem o payload completo', async () => {
+    const cloud = new Cloud(), pc = makeDevice(cloud);await pc.open();
+    const payloadReads=()=>cloud.calls.filter(c=>c.path.endsWith('/papelaria_sync')&&new URLSearchParams(c.query).get('select')?.includes('payload')).length;
+    const before=payloadReads();await pc.sync();await pc.sync();
+    assert.equal(payloadReads(),before);
+    cloud.change(d=>{d.config.nomeLoja='Ateliê fictício atualizado';});await pc.sync();
+    assert.equal(payloadReads(),before+1);assert.equal(pc.get('db.config.nomeLoja'),'Ateliê fictício atualizado');
   });
 
   await check('Chaves secretas são rejeitadas antes de enviar credenciais', async () => {

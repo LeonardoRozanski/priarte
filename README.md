@@ -86,6 +86,16 @@ custo, fornecedor e ficha de consulta. A aba **Estoque** reúne compras, ajustes
 filtros de reposição. No produto, **Adicionar material → Novo material** permite
 cadastrar e vincular um material sem perder os campos já preenchidos.
 
+Em **Produtos → Editar → Fotos do produto pronto**, adicione até três fotos,
+escolha a principal e salve o produto. A lista mostra a foto principal; a ficha
+permite ampliar as imagens, navegar pelas miniaturas e deslizar no celular.
+Cancelar preserva as fotos já salvas. As imagens são convertidas no aparelho em
+JPEG com até 1280 pixels no maior lado e 150 KB por foto, sem os metadados do
+arquivo original. Elas fazem parte dos dados privados, da sincronização existente
+e do backup; não são publicadas no Git nem em uma galeria externa.
+Cadastros com fotos usam IndexedDB para dados e estado de sincronização, evitando
+o limite do localStorage. A nuvem só baixa os dados completos quando a versão muda.
+
 Na ficha do orçamento, **Salvar PDF** gera e baixa o documento diretamente no
 aparelho, com fundo branco, itens, total e observações, sem o endereço do sistema.
 O PDF funciona offline; a biblioteca jsPDF 4.2.1 (MIT) está incorporada no HTML.
@@ -167,3 +177,8 @@ usado pelo Safari, além do Chrome/Chromium.
 `python tests/indicadores.test.py` confere os totais históricos, filtros, gráficos
 interativos, reposição e navegação responsiva com dados fictícios. Também aceita
 `PRIARTE_ENGINE=webkit` e `PRIARTE_QA_DIR`.
+
+`python tests/fotos.test.py` verifica fotos, compressão, galeria, cancelamento,
+backup, falhas de gravação e dados maiores que 6 MB, com imagens fictícias.
+Aceita `PRIARTE_ENGINE=webkit`, `PRIARTE_QA_DIR` e `PRIARTE_APP_URL` para conferir
+a versão publicada em um navegador isolado, sem conta de nuvem.

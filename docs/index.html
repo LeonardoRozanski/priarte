@@ -345,6 +345,27 @@
   .grafico-produto:hover{color:var(--accent)}
   .indicadores-estoque{display:grid;gap:12px}
   .indicadores-estoque .trabalho{padding:12px 0}
+  .produto-com-foto{display:flex;align-items:center;gap:12px;min-width:0}
+  .produto-miniatura{border:1px solid var(--line);border-radius:10px;background:var(--input);padding:0;cursor:pointer;width:56px;height:56px;flex-shrink:0;overflow:hidden}
+  .produto-miniatura img{width:100%;height:100%;object-fit:cover;display:block}
+  .fotos-produto{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+  .fotos-produto:empty{display:none}
+  .foto-cartao{min-width:0;position:relative;border:1px solid var(--line);border-radius:12px;background:var(--input);overflow:hidden}
+  .foto-cartao img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+  .foto-abrir{display:block;padding:0;border:0;width:100%;background:none;cursor:pointer}
+  .foto-remover{position:absolute;right:4px;top:4px;width:44px;min-height:44px!important;padding:8px!important;background:var(--panel)!important;box-shadow:var(--shadow)}
+  .foto-legenda{display:flex;align-items:center;justify-content:center;min-height:44px;padding:4px;font-size:.8rem;color:var(--muted)}
+  .foto-legenda .btn{width:100%;font-size:.75rem;padding:6px;min-height:40px}
+  .fotos-adicionar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .galeria-imagem{display:flex;align-items:center;justify-content:center;background:var(--input);border:1px solid var(--line);border-radius:12px;overflow:hidden;touch-action:pan-y}
+  .galeria-produto:focus{outline:none}
+  .galeria-produto:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:12px}
+  .galeria-imagem img{display:block;max-width:100%;max-height:55vh;max-height:55dvh;object-fit:contain}
+  .galeria-controles{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+  .galeria-miniaturas{display:flex;justify-content:center;gap:10px;margin-top:14px}
+  .galeria-miniaturas button{width:64px;height:64px;border:2px solid transparent;border-radius:10px;overflow:hidden;padding:0;cursor:pointer;background:var(--input)}
+  .galeria-miniaturas button[aria-pressed=true]{border-color:var(--accent)}
+  .galeria-miniaturas img{width:100%;height:100%;object-fit:cover;display:block}
   @media(max-width:760px){
     .indicadores-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
     .indicadores-cards .valor{font-size:1.4rem;letter-spacing:-.03em}
@@ -837,7 +858,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.09-12';
+const APP_VERSAO='2026.10.09-13';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -851,20 +872,73 @@ function criarDBVazio(){
 }
 
 let db;
+let armazenamentoPrivado=false,snapshotPrivado=null,conexaoPrivada=null;
+let gravacaoPrivada=Promise.resolve();
+const STORAGE_PRIVADO_KEY='papelariaArmazenamentoPrivado';
+function abrirArmazenamentoPrivado(){
+  if(conexaoPrivada)return conexaoPrivada;
+  conexaoPrivada=new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)){reject(new Error('O armazenamento de fotos não está disponível neste navegador.'));return;}
+    const pedido=indexedDB.open('priarte-dados-privados',1);
+    pedido.onupgradeneeded=()=>pedido.result.createObjectStore('estado');
+    pedido.onsuccess=()=>resolve(pedido.result);
+    pedido.onerror=()=>reject(new Error('Não foi possível abrir o armazenamento deste aparelho.'));
+    pedido.onblocked=()=>reject(new Error('Feche outras janelas do app e tente novamente.'));
+  });
+  conexaoPrivada.catch(()=>{conexaoPrivada=null;});return conexaoPrivada;
+}
+async function lerRegistroPrivado(chave){
+  const banco=await abrirArmazenamentoPrivado();
+  return new Promise((resolve,reject)=>{
+    const pedido=banco.transaction('estado','readonly').objectStore('estado').get(chave);
+    pedido.onsuccess=()=>resolve(pedido.result||null);pedido.onerror=()=>reject(new Error('Não foi possível ler os dados deste aparelho.'));
+  });
+}
+async function gravarRegistroPrivado(chave,valor){
+  const banco=await abrirArmazenamentoPrivado();
+  return new Promise((resolve,reject)=>{
+    const transacao=banco.transaction('estado','readwrite');transacao.objectStore('estado').put(valor,chave);
+    transacao.oncomplete=()=>resolve();
+    transacao.onerror=transacao.onabort=()=>reject(new Error('Não foi possível guardar os dados neste aparelho. Libere espaço e tente salvar novamente.'));
+  });
+}
+function guardarSnapshotPrivado(){
+  const snapshot={dados:JSON.stringify(db),sync:JSON.stringify(syncEstado)};
+  armazenamentoPrivado=true;
+  gravacaoPrivada=gravacaoPrivada.catch(()=>{}).then(async()=>{
+    await gravarRegistroPrivado('snapshot',snapshot);
+    snapshotPrivado=snapshot;
+    try{localStorage.setItem(STORAGE_PRIVADO_KEY,'1');localStorage.removeItem(STORE_KEY);localStorage.removeItem(SYNC_STATE_KEY);}catch(e){}
+  });
+  gravacaoPrivada.catch(e=>{console.warn(e);toast(e.message);});return gravacaoPrivada;
+}
+async function carregarArmazenamentoPrivado(){
+  try{
+    snapshotPrivado=await lerRegistroPrivado('snapshot');
+    if(snapshotPrivado){armazenamentoPrivado=true;const salvo=JSON.parse(snapshotPrivado.sync||'null');if(salvo)Object.assign(syncEstado,salvo);}
+  }catch(e){
+    let obrigatorio=false;try{obrigatorio=localStorage.getItem(STORAGE_PRIVADO_KEY)==='1';}catch(ignorado){}
+    if(obrigatorio)throw e;
+  }
+}
 function loadDB(){
+  if(snapshotPrivado){db=JSON.parse(snapshotPrivado.dados);return;}
   try{const raw=localStorage.getItem(STORE_KEY);if(raw){db=JSON.parse(raw);return;}}catch(e){console.warn('localStorage indisponível',e);}
   db=criarDBVazio();persistirDB();
 }
 function persistirDB(){
-  try{localStorage.setItem(STORE_KEY,JSON.stringify(db));}catch(e){console.warn(e);}
+  if(armazenamentoPrivado||db.produtos.some(p=>Array.isArray(p.fotos)&&p.fotos.length))return guardarSnapshotPrivado();
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(db));}catch(e){return guardarSnapshotPrivado();}
 }
 function saveDB(){
   if(!aplicandoSync){
     db.rev=(db.rev||0)+1;
     db.atualizadoEm=new Date().toISOString();
+    syncEstado.pendente=true;
   }
   persistirDB();
   if(!aplicandoSync)registrarAlteracaoSync();
+  return armazenamentoPrivado?gravacaoPrivada:Promise.resolve();
 }
 
 /* Compatibilidade de formato: usa somente os dados já existentes no aparelho ou no arquivo privado. */
@@ -1505,6 +1579,91 @@ function excluirLote(loteId,materialId){
 }
 
 /* ================= produtos ================= */
+function fotosProduto(produto){
+  return Array.isArray(produto?.fotos)?produto.fotos.filter(f=>f&&typeof f.dados==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(f.dados)).slice(0,3):[];
+}
+function formularioFotosProduto(){
+  const atual=$('#editorFotosProduto');if(atual)return atual.closest('form');
+  for(const modal of [...pilhaModal].reverse())for(const no of modal.nos){
+    const editor=no.querySelector?.('#editorFotosProduto');if(editor)return editor.closest('form');
+  }
+  return null;
+}
+async function prepararFotoProduto(arquivo){
+  if(!/^image\/(jpeg|png|webp|heic|heif|gif|avif)$/i.test(arquivo.type||'')&&!/\.(jpe?g|png|webp|heic|heif|gif|avif)$/i.test(arquivo.name||''))throw new Error('Escolha uma foto em JPG, PNG ou WebP.');
+  if(arquivo.size>25*1024*1024)throw new Error('Esta foto é muito grande. Escolha uma imagem de até 25 MB.');
+  const origem=URL.createObjectURL(arquivo),imagem=new Image();
+  try{
+    await new Promise((resolve,reject)=>{imagem.onload=resolve;imagem.onerror=()=>reject(new Error('Não foi possível abrir esta foto. Tente uma imagem JPG, PNG ou WebP.'));imagem.src=origem;});
+    if(!imagem.naturalWidth||!imagem.naturalHeight)throw new Error('Esta foto não pôde ser lida.');
+    const escala=Math.min(1,1280/Math.max(imagem.naturalWidth,imagem.naturalHeight));
+    const canvas=document.createElement('canvas');let largura=Math.max(1,Math.round(imagem.naturalWidth*escala)),altura=Math.max(1,Math.round(imagem.naturalHeight*escala));
+    let blob=null;
+    for(let tentativa=0;tentativa<5;tentativa++){
+      canvas.width=largura;canvas.height=altura;const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,largura,altura);ctx.drawImage(imagem,0,0,largura,altura);
+      for(const qualidade of [.82,.7,.58]){
+        blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',qualidade));
+        if(blob&&blob.size<=150*1024)break;
+      }
+      if(blob&&blob.size<=150*1024)break;
+      largura=Math.max(1,Math.round(largura*.8));altura=Math.max(1,Math.round(altura*.8));
+    }
+    if(!blob||blob.size>150*1024)throw new Error('Não foi possível reduzir esta foto. Tente outra imagem.');
+    const dados=await new Promise((resolve,reject)=>{const leitor=new FileReader();leitor.onload=()=>resolve(leitor.result);leitor.onerror=()=>reject(new Error('Não foi possível preparar esta foto.'));leitor.readAsDataURL(blob);});
+    return {id:uid('foto'),dados,largura:canvas.width,altura:canvas.height};
+  }finally{imagem.src='';URL.revokeObjectURL(origem);}
+}
+async function adicionarFotosProduto(input){
+  const fp=formProd,arquivos=Array.from(input.files||[]);input.value='';
+  if(!fp||fp.fotosProcessando||!arquivos.length)return;
+  const vagas=3-fp.fotos.length;if(vagas<=0){toast('Cada produto pode ter até 3 fotos.');return;}
+  fp.fotosProcessando=true;desenharFotosProduto();
+  let adicionadas=0,erro='';
+  for(const arquivo of arquivos.slice(0,vagas)){
+    try{const foto=await prepararFotoProduto(arquivo);if(formProd!==fp||!formularioFotosProduto())break;fp.fotos.push(foto);adicionadas++;}
+    catch(e){erro=e.message;}
+  }
+  fp.fotosProcessando=false;
+  if(formProd!==fp||!formularioFotosProduto())return;
+  desenharFotosProduto();
+  const status=formularioFotosProduto()?.querySelector('#statusFotosProduto');if(status)status.textContent=erro||adicionadas+' '+(adicionadas===1?'foto adicionada.':'fotos adicionadas.')+(arquivos.length>vagas?' Limite de 3 fotos por produto.':'');
+}
+function desenharFotosProduto(){
+  const form=formularioFotosProduto(),el=form?.querySelector('#editorFotosProduto'),fp=formProd;if(!el||!fp)return;
+  el.innerHTML=fp.fotos.map((f,i)=>`<div class="foto-cartao"><button class="foto-abrir" type="button" data-ver-foto="${i}" aria-label="Ampliar foto ${i+1}"><img src="${esc(f.dados)}" alt="Foto ${i+1} do produto pronto"></button>
+    <button class="btn perigo foto-remover" type="button" data-remover-foto="${i}" aria-label="Remover foto ${i+1}" ${fp.fotosProcessando?'disabled':''}>${ICONE_LIXEIRA}</button>
+    <div class="foto-legenda">${i===0?'Foto principal':`<button type="button" class="btn neutro" data-principal-foto="${i}" ${fp.fotosProcessando?'disabled':''}>Usar como principal</button>`}</div></div>`).join('');
+  el.querySelectorAll('[data-remover-foto]').forEach(b=>b.addEventListener('click',()=>{fp.fotos.splice(Number(b.dataset.removerFoto),1);desenharFotosProduto();}));
+  el.querySelectorAll('[data-principal-foto]').forEach(b=>b.addEventListener('click',()=>{fp.fotos.unshift(fp.fotos.splice(Number(b.dataset.principalFoto),1)[0]);desenharFotosProduto();}));
+  el.querySelectorAll('[data-ver-foto]').forEach(b=>b.addEventListener('click',()=>abrirGaleriaFotos(fp.fotos,fp.nome||'Produto pronto',Number(b.dataset.verFoto))));
+  const adicionar=form.querySelector('#btnAdicionarFotos');if(adicionar){adicionar.disabled=fp.fotosProcessando||fp.fotos.length>=3;adicionar.textContent=fp.fotosProcessando?'Preparando fotos…':'+ Adicionar fotos';}
+  const contador=form.querySelector('#contagemFotosProduto');if(contador)contador.textContent=fp.fotos.length+' de 3 fotos';
+  const salvar=form.querySelector('button[type=submit]');if(salvar)salvar.disabled=!!fp.fotosProcessando;
+}
+function abrirFotosProduto(id,indice=0){const p=produtoById(id);if(p)abrirGaleriaFotos(fotosProduto(p),p.nome,indice);}
+function abrirGaleriaFotos(fotos,nome,indice=0){
+  if(!fotos.length)return;
+  let atual=Math.max(0,Math.min(indice,fotos.length-1));
+  abrirModal(`<h3>${esc(nome)}</h3><div class="galeria-produto">
+    <div class="galeria-imagem"><img id="fotoAmpliadaProduto" alt=""></div>
+    <div class="galeria-controles"><button class="btn neutro" type="button" id="fotoAnterior" aria-label="Foto anterior">←</button><span id="posicaoFotoProduto" role="status" aria-live="polite"></span><button class="btn neutro" type="button" id="fotoSeguinte" aria-label="Próxima foto">→</button></div>
+    <div class="galeria-miniaturas">${fotos.map((f,i)=>`<button type="button" data-foto-galeria="${i}" aria-label="Ver foto ${i+1}" aria-pressed="false"><img src="${esc(f.dados)}" alt=""></button>`).join('')}</div></div>
+    <div class="acoes"><button class="btn neutro" type="button" onclick="fecharModal()">Voltar</button></div>`,{empilhar:true});
+  const galeria=$('#modal .galeria-produto'),imagem=$('#fotoAmpliadaProduto');
+  const mostrar=indice=>{
+    atual=(indice+fotos.length)%fotos.length;imagem.src=fotos[atual].dados;imagem.alt='Foto '+(atual+1)+' de '+nome;
+    $('#posicaoFotoProduto').textContent='Foto '+(atual+1)+' de '+fotos.length;
+    galeria.querySelectorAll('[data-foto-galeria]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.fotoGaleria)===atual)));
+  };
+  $('#fotoAnterior').disabled=$('#fotoSeguinte').disabled=fotos.length<2;
+  $('#fotoAnterior').addEventListener('click',()=>mostrar(atual-1));$('#fotoSeguinte').addEventListener('click',()=>mostrar(atual+1));
+  galeria.querySelectorAll('[data-foto-galeria]').forEach(b=>b.addEventListener('click',()=>mostrar(Number(b.dataset.fotoGaleria))));
+  galeria.addEventListener('keydown',ev=>{if(ev.key==='ArrowLeft'||ev.key==='ArrowRight'){ev.preventDefault();mostrar(atual+(ev.key==='ArrowRight'?1:-1));}});
+  let toque=null;imagem.addEventListener('touchstart',ev=>{toque=ev.touches.length===1?{x:ev.touches[0].clientX,y:ev.touches[0].clientY}:null;},{passive:true});
+  imagem.addEventListener('touchend',ev=>{if(!toque||!ev.changedTouches.length)return;const dx=ev.changedTouches[0].clientX-toque.x,dy=ev.changedTouches[0].clientY-toque.y;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy))mostrar(atual+(dx<0?1:-1));toque=null;},{passive:true});
+  mostrar(atual);galeria.tabIndex=0;galeria.focus({preventScroll:true});
+}
 let filtroProd='';
 function renderProdutos(){
   const f=filtroProd.toLowerCase();
@@ -1516,7 +1675,7 @@ function renderProdutos(){
     </div>
     <table class="grid"><thead><tr><th>Produto</th><th class="num">Custo por unidade</th><th class="num">Lucro por unidade</th><th class="num">Preço de venda</th><th></th></tr></thead>
     <tbody>${lista.map(p=>{const c=custoProduto(p);return `<tr>
-      <td><button class="btn mini sec" onclick="fichaProduto('${p.id}')">${esc(p.nome)}</button></td>
+      <td><div class="produto-com-foto">${fotosProduto(p).length?`<button class="produto-miniatura" onclick="abrirFotosProduto('${p.id}')" aria-label="Ver fotos de ${esc(p.nome)}"><img src="${esc(fotosProduto(p)[0].dados)}" alt="" loading="lazy"></button>`:''}<button class="btn mini sec" onclick="fichaProduto('${p.id}')">${esc(p.nome)}</button></div></td>
       <td class="num">${fmtBRL(c.total)}</td>
       <td class="num">${fmtBRL(lucroProduto(p))}</td>
       <td class="num"><strong>${fmtBRL(precoFinal(p))}</strong>${p.precoFinalManual!=null?' <span class="muted" title="Preço manual">✎</span>':''}</td>
@@ -1532,6 +1691,7 @@ function fichaProduto(id){
   const prod=producivel(p);
   abrirModal(`<h3>${esc(p.nome)}</h3>
     ${p.obs?`<p class="muted">${esc(p.obs)}</p>`:''}
+    ${fotosProduto(p).length?`<div class="fotos-produto">${fotosProduto(p).map((f,i)=>`<button class="produto-miniatura foto-abrir" style="width:100%;height:auto" onclick="abrirFotosProduto('${p.id}',${i})" aria-label="Ampliar foto ${i+1} de ${esc(p.nome)}"><img style="aspect-ratio:1" src="${esc(f.dados)}" alt="Foto ${i+1} do produto pronto"></button>`).join('')}</div>`:''}
     ${prod!=null?`<p class="${prod<=0?'neg':'muted'}">📦 Com o estoque atual dá para produzir <strong>${prod} un</strong></p>`:''}
     <table class="grid"><thead><tr><th>Material</th><th class="num">Quantidade</th><th class="num">Custo por unidade</th><th class="num">Custo</th></tr></thead><tbody>${linhas}</tbody></table>
     <div style="margin-top:12px">${resumoPrecificacao(p)}</div>
@@ -1540,7 +1700,7 @@ function fichaProduto(id){
 let formProd=null;
 function abrirFormProduto(id){
   const p=id?produtoById(id):{nome:'',obs:'',tempoMin:0,lucroPct:50,itens:[],precoFinalManual:null};
-  formProd={id:id||null,nome:p.nome,obs:p.obs,tempoMin:p.tempoMin,lucroPct:p.lucroPct,precoFinalManual:p.precoFinalManual,itens:(p.itens||[]).map(i=>({materialId:i.materialId,qtd:i.qtd}))};
+  formProd={id:id||null,nome:p.nome,obs:p.obs,tempoMin:p.tempoMin,lucroPct:p.lucroPct,precoFinalManual:p.precoFinalManual,itens:(p.itens||[]).map(i=>({materialId:i.materialId,qtd:i.qtd})),fotos:fotosProduto(p).map(f=>({...f})),fotosProcessando:false};
   desenharFormProduto();
 }
 function desenharFormProduto(){
@@ -1551,6 +1711,12 @@ function desenharFormProduto(){
       <div class="campo largo"><label>Nome do produto</label><input name="nome" required value="${esc(fp.nome)}" oninput="formProd.nome=this.value"></div>
       <div class="campo largo"><label>Observações</label><textarea name="obs" rows="2" oninput="formProd.obs=this.value">${esc(fp.obs)}</textarea></div>
     </div>
+    <section class="form-secao"><div class="secao-titulo"><div><h4>Fotos do produto pronto</h4><p class="muted">Até 3 fotos. A primeira é a principal.</p></div></div>
+      <div class="fotos-produto" id="editorFotosProduto"></div>
+      <div class="fotos-adicionar"><button class="btn sec" type="button" id="btnAdicionarFotos" onclick="document.getElementById('entradaFotosProduto').click()">+ Adicionar fotos</button><span class="muted" id="contagemFotosProduto"></span></div>
+      <input hidden type="file" id="entradaFotosProduto" accept="image/*" multiple aria-label="Adicionar fotos do produto pronto" onchange="adicionarFotosProduto(this)">
+      <p class="muted" id="statusFotosProduto" role="status" aria-live="polite"></p>
+    </section>
     <section class="form-secao">
       <div class="secao-titulo"><div><h4>Materiais</h4><p class="muted">Quantidades para produzir 1 unidade.</p></div>
         <button type="button" class="btn sec" onclick="addItemReceita()">+ Adicionar material</button></div>
@@ -1567,7 +1733,7 @@ function desenharFormProduto(){
     </section>
     <div class="acoes"><button class="btn" type="submit">Salvar produto</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
   </form>`);
-  desenharReceitaProduto();previewProduto();
+  desenharFotosProduto();desenharReceitaProduto();previewProduto();
 }
 function desenharReceitaProduto(){
   const fp=formProd,lista=$('#tbReceita');if(!lista)return;
@@ -1628,16 +1794,21 @@ function previewProduto(){
   const el=$('#previewProd');if(!el)return;
   el.innerHTML=resumoPrecificacao(formProd);
 }
-function salvarProduto(ev){
+async function salvarProduto(ev){
   ev.preventDefault();const f=ev.target;
+  if(formProd.fotosProcessando){toast('Aguarde o preparo das fotos antes de salvar.');return false;}
   if(![f.tempoMin,f.lucroPct,f.precoFinalManual].every(campo=>validarNumeroCampo(campo)))return false;
   if(!f.nome.value.trim()){f.nome.value='';f.nome.reportValidity();return false;}
   if(formProd.itens.some(i=>!materialById(i.materialId)||i.qtd<=0)){alert('Selecione um material e informe uma quantidade maior que zero em cada linha.');return false;}
   const itens=formProd.itens.filter(i=>i.materialId&&i.qtd>0);
   const pfTxt=f.precoFinalManual.value.trim();
-  const dados={nome:f.nome.value.trim(),obs:f.obs.value.trim(),tempoMin:parseNum(f.tempoMin.value),lucroPct:parseNum(f.lucroPct.value),itens,precoFinalManual:pfTxt?parseNum(pfTxt):null};
+  const dados={nome:f.nome.value.trim(),obs:f.obs.value.trim(),tempoMin:parseNum(f.tempoMin.value),lucroPct:parseNum(f.lucroPct.value),itens,precoFinalManual:pfTxt?parseNum(pfTxt):null,fotos:formProd.fotos.map(f=>({...f}))};
+  const antes=db.produtos.map(p=>({...p})),botao=f.querySelector('button[type=submit]');if(botao)botao.disabled=true;
   if(formProd.id){Object.assign(produtoById(formProd.id),dados);}else{db.produtos.push(Object.assign({id:uid('p')},dados));}
-  saveDB();fecharModal();render();toast('Produto salvo.');return false;
+  try{await saveDB();fecharModal();render();toast('Produto salvo.');}
+  catch(e){db.produtos=antes;toast(e.message);}
+  finally{if(botao)botao.disabled=false;}
+  return false;
 }
 function excluirProduto(id){
   if(!confirm('Excluir este produto? Orçamentos já salvos não serão afetados.'))return;
@@ -2241,6 +2412,7 @@ try{
 function nuvemAtiva(){return !!(nuvem&&nuvem.session&&nuvem.session.user);}
 function temOrigemSync(){return nuvemAtiva()||!!syncHandle;}
 function salvarEstadoSync(){
+  if(armazenamentoPrivado&&db)return guardarSnapshotPrivado();
   try{localStorage.setItem(SYNC_STATE_KEY,JSON.stringify(syncEstado));}catch(e){console.warn(e);}
 }
 function selecionarOrigemSync(){
@@ -2493,6 +2665,14 @@ async function conectarNuvem(ev){
 }
 async function lerOrigemSync(){
   if(!nuvemAtiva())return lerArquivoSync();
+  // Fotos só são baixadas quando a versão muda; verificações periódicas leem a versão.
+  const filtro='&user_id=eq.'+encodeURIComponent(nuvem.session.user.id)+'&limit=1';
+  const estado=await apiNuvem('/rest/v1/papelaria_sync?select=version,updated_at'+filtro);
+  if(!Array.isArray(estado))throw new Error('Resposta inválida da nuvem.');
+  if(!estado.length)return null;
+  if(estado[0].version===syncEstado.versao&&syncEstado.base){
+    try{return {...normalizarArquivoSync(JSON.parse(syncEstado.base)),versao:estado[0].version};}catch(e){}
+  }
   const linhas=await apiNuvem('/rest/v1/papelaria_sync?select=version,payload,updated_at&user_id=eq.'+
     encodeURIComponent(nuvem.session.user.id)+'&limit=1');
   if(!Array.isArray(linhas))throw new Error('Resposta inválida da nuvem.');
@@ -2514,6 +2694,7 @@ async function escreverOrigemSync(payload,versao){
 
 /* Uma operação por vez; um novo save durante o envio entra na próxima rodada. */
 function checarAtualizacaoRemota(silencioso=true){
+  if(!db)return Promise.resolve();
   if(!temOrigemSync()||(!nuvemAtiva()&&!syncAutorizado))return Promise.resolve();
   if(syncPromessa){syncRepetir=true;return syncPromessa;}
   if(syncConflito)return Promise.resolve();
@@ -2523,6 +2704,7 @@ function checarAtualizacaoRemota(silencioso=true){
       let conflitosDeGravacao=0;
       do{
         syncRepetir=false;
+        await gravacaoPrivada;
         selecionarOrigemSync();
         const remoto=await lerOrigemSync();
         syncAdiado=false;syncErro='';
@@ -2556,6 +2738,7 @@ function checarAtualizacaoRemota(silencioso=true){
           if(syncEstado.pendente)syncRepetir=true;
         }
         ultimoSync=new Date();syncErro='';salvarEstadoSync();
+        await gravacaoPrivada;
       }while(syncRepetir&&!syncConflito);
       if(!silencioso&&!syncConflito&&!editandoFormulario())toast('Dados atualizados.');
     }catch(e){
@@ -2589,7 +2772,7 @@ async function resolverConflitoSync(escolha){
   const remoto=syncConflito;
   if(escolha==='remoto'){
     // Guarda também a cópia anterior no dispositivo, antes da substituição.
-    try{localStorage.setItem('papelariaAntesDaTroca',JSON.stringify(payloadSync()));}
+    try{if(armazenamentoPrivado)await gravarRegistroPrivado('antesTroca',JSON.stringify(payloadSync()));else localStorage.setItem('papelariaAntesDaTroca',JSON.stringify(payloadSync()));}
     catch(e){toast('Baixe uma cópia deste aparelho antes de substituir os dados.');return;}
     aplicarDadosRemotos(remoto);syncEstado.pendente=false;
   }else syncEstado.pendente=true;
@@ -2739,18 +2922,20 @@ function toggleTema(){aplicaTema(document.body.classList.contains('claro')?'escu
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){
   navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
 }
-loadDB();
-migrarDB();
-$('#logoImg').src=LOGO;
-instalarPWA();
-let temaIni='escuro';
-try{temaIni=localStorage.getItem('papelariaTema')||'escuro';}catch(e){}
-aplicaTema(temaIni);
-showView('dashboard');
-atualizaSyncBtn();
-atualizaBtnInstalar();
-carregarHandleSync();
-try{localStorage.setItem('papelariaVersao',APP_VERSAO);}catch(e){}
+async function iniciarApp(){
+  $('header.top').inert=true;
+  try{
+    await carregarArmazenamentoPrivado();loadDB();migrarDB();
+    $('#logoImg').src=LOGO;instalarPWA();
+    let temaIni='escuro';try{temaIni=localStorage.getItem('papelariaTema')||'escuro';}catch(e){}
+    aplicaTema(temaIni);showView('dashboard');atualizaSyncBtn();atualizaBtnInstalar();
+    carregarHandleSync();
+    try{localStorage.setItem('papelariaVersao',APP_VERSAO);}catch(e){}
+  }catch(e){
+    $('#view-dashboard').innerHTML=`<div class="painel"><h2>Não foi possível abrir seus dados</h2><p>${esc(e.message)}</p><button class="btn" onclick="iniciarApp()">Tentar novamente</button></div>`;
+  }finally{$('header.top').inert=false;}
+}
+iniciarApp();
 </script>
 </body>
 </html>
