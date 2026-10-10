@@ -350,12 +350,13 @@
   .produto-miniatura img{width:100%;height:100%;object-fit:cover;display:block}
   .fotos-produto{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
   .fotos-produto:empty{display:none}
-  .foto-cartao{min-width:0;position:relative;border:1px solid var(--line);border-radius:12px;background:var(--input);overflow:hidden}
+  .foto-cartao{min-width:0;position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--input);overflow:hidden}
   .foto-cartao img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
   .foto-abrir{display:block;padding:0;border:0;width:100%;background:none;cursor:pointer}
   .foto-remover{position:absolute;right:4px;top:4px;width:44px;min-height:44px!important;padding:8px!important;background:var(--panel)!important;box-shadow:var(--shadow)}
   .foto-legenda{display:flex;align-items:center;justify-content:center;min-height:44px;padding:4px;font-size:.8rem;color:var(--muted)}
   .foto-legenda .btn{width:100%;font-size:.75rem;padding:6px;min-height:40px}
+  .foto-cartao .foto-legenda:last-child{margin-top:auto}
   .fotos-adicionar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
   .galeria-imagem{display:flex;align-items:center;justify-content:center;background:var(--input);border:1px solid var(--line);border-radius:12px;overflow:hidden;touch-action:pan-y}
   .galeria-produto:focus{outline:none}
@@ -860,7 +861,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.10-01';
+const APP_VERSAO='2026.10.10-02';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1581,6 +1582,8 @@ function excluirLote(loteId,materialId){
 }
 
 /* ================= produtos ================= */
+const FOTO_PRODUTO_MAX_LADO=2560;
+const FOTO_PRODUTO_MAX_BYTES=1024*1024;
 function fotosProduto(produto){
   return Array.isArray(produto?.fotos)?produto.fotos.filter(f=>f&&typeof f.dados==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(f.dados)).slice(0,3):[];
 }
@@ -1644,47 +1647,57 @@ async function prepararFotoProduto(arquivo){
   try{
     await new Promise((resolve,reject)=>{imagem.onload=resolve;imagem.onerror=()=>reject(new Error('Não foi possível abrir esta foto. Tente uma imagem JPG, PNG ou WebP.'));imagem.src=origem;});
     if(!imagem.naturalWidth||!imagem.naturalHeight)throw new Error('Esta foto não pôde ser lida.');
-    const escala=Math.min(1,1280/Math.max(imagem.naturalWidth,imagem.naturalHeight));
+    const escala=Math.min(1,FOTO_PRODUTO_MAX_LADO/Math.max(imagem.naturalWidth,imagem.naturalHeight));
     const canvas=document.createElement('canvas');let largura=Math.max(1,Math.round(imagem.naturalWidth*escala)),altura=Math.max(1,Math.round(imagem.naturalHeight*escala));
     let blob=null;
-    for(let tentativa=0;tentativa<5;tentativa++){
+    for(let tentativa=0;tentativa<8;tentativa++){
       canvas.width=largura;canvas.height=altura;const ctx=canvas.getContext('2d');
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
       ctx.fillStyle='#fff';ctx.fillRect(0,0,largura,altura);ctx.drawImage(imagem,0,0,largura,altura);
-      for(const qualidade of [.82,.7,.58]){
+      for(const qualidade of [.94,.92,.9]){
         blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',qualidade));
-        if(blob&&blob.size<=150*1024)break;
+        if(blob&&blob.size<=FOTO_PRODUTO_MAX_BYTES)break;
       }
-      if(blob&&blob.size<=150*1024)break;
-      largura=Math.max(1,Math.round(largura*.8));altura=Math.max(1,Math.round(altura*.8));
+      if(blob&&blob.size<=FOTO_PRODUTO_MAX_BYTES)break;
+      largura=Math.max(1,Math.round(largura*.85));altura=Math.max(1,Math.round(altura*.85));
     }
-    if(!blob||blob.size>150*1024)throw new Error('Não foi possível reduzir esta foto. Tente outra imagem.');
+    if(!blob||blob.size>FOTO_PRODUTO_MAX_BYTES)throw new Error('Não foi possível preparar esta foto. Tente outra imagem.');
     const dados=await new Promise((resolve,reject)=>{const leitor=new FileReader();leitor.onload=()=>resolve(leitor.result);leitor.onerror=()=>reject(new Error('Não foi possível preparar esta foto.'));leitor.readAsDataURL(blob);});
     return {id:uid('foto'),dados,largura:canvas.width,altura:canvas.height};
   }finally{imagem.src='';URL.revokeObjectURL(origem);}
 }
 async function adicionarFotosProduto(input){
-  const fp=formProd,arquivos=Array.from(input.files||[]);input.value='';
+  const fp=formProd,arquivos=Array.from(input.files||[]),indiceTroca=fp?.indiceFotoTroca;input.value='';
   if(!fp||fp.fotosProcessando||!arquivos.length)return;
-  const vagas=3-fp.fotos.length;if(vagas<=0){toast('Cada produto pode ter até 3 fotos.');return;}
+  fp.indiceFotoTroca=null;
+  const substituir=Number.isInteger(indiceTroca)&&indiceTroca>=0&&indiceTroca<fp.fotos.length;
+  const vagas=substituir?1:3-fp.fotos.length;if(vagas<=0){toast('Cada produto pode ter até 3 fotos.');return;}
   fp.fotosProcessando=true;desenharFotosProduto();
   let adicionadas=0,erro='';
   for(const arquivo of arquivos.slice(0,vagas)){
-    try{const foto=await prepararFotoProduto(arquivo);if(formProd!==fp||!formularioFotosProduto())break;fp.fotos.push(foto);adicionadas++;}
+    try{const foto=await prepararFotoProduto(arquivo);if(formProd!==fp||!formularioFotosProduto())break;if(substituir)fp.fotos[indiceTroca]={...foto,id:fp.fotos[indiceTroca].id};else fp.fotos.push(foto);adicionadas++;}
     catch(e){erro=e.message;}
   }
   fp.fotosProcessando=false;
   if(formProd!==fp||!formularioFotosProduto())return;
   desenharFotosProduto();
-  const status=formularioFotosProduto()?.querySelector('#statusFotosProduto');if(status)status.textContent=erro||adicionadas+' '+(adicionadas===1?'foto adicionada.':'fotos adicionadas.')+(arquivos.length>vagas?' Limite de 3 fotos por produto.':'');
+  const status=formularioFotosProduto()?.querySelector('#statusFotosProduto');if(status)status.textContent=erro||(substituir?'Foto substituída.':adicionadas+' '+(adicionadas===1?'foto adicionada.':'fotos adicionadas.')+(arquivos.length>vagas?' Limite de 3 fotos por produto.':''));
+}
+function selecionarFotoProduto(indice=null){
+  if(!formProd||formProd.fotosProcessando)return;
+  formProd.indiceFotoTroca=indice;
+  const input=$('#entradaFotosProduto');input.multiple=indice===null;input.click();
 }
 function desenharFotosProduto(){
   const form=formularioFotosProduto(),el=form?.querySelector('#editorFotosProduto'),fp=formProd;if(!el||!fp)return;
   el.innerHTML=fp.fotos.map((f,i)=>`<div class="foto-cartao"><button class="foto-abrir" type="button" data-ver-foto="${i}" aria-label="Ampliar foto ${i+1}"><img src="${esc(f.dados)}" alt="Foto ${i+1} do produto pronto"></button>
     <button class="btn perigo foto-remover" type="button" data-remover-foto="${i}" aria-label="Remover foto ${i+1}" ${fp.fotosProcessando?'disabled':''}>${ICONE_LIXEIRA}</button>
-    <div class="foto-legenda">${i===0?'Foto principal':`<button type="button" class="btn neutro" data-principal-foto="${i}" ${fp.fotosProcessando?'disabled':''}>Usar como principal</button>`}</div></div>`).join('');
+    <div class="foto-legenda">${i===0?'Foto principal':`<button type="button" class="btn neutro" data-principal-foto="${i}" ${fp.fotosProcessando?'disabled':''}>Usar como principal</button>`}</div>
+    <div class="foto-legenda"><button type="button" class="btn sec" data-trocar-foto="${i}" aria-label="Trocar foto ${i+1}" ${fp.fotosProcessando?'disabled':''}>Trocar foto</button></div></div>`).join('');
   el.querySelectorAll('[data-remover-foto]').forEach(b=>b.addEventListener('click',()=>{fp.fotos.splice(Number(b.dataset.removerFoto),1);desenharFotosProduto();}));
   el.querySelectorAll('[data-principal-foto]').forEach(b=>b.addEventListener('click',()=>{fp.fotos.unshift(fp.fotos.splice(Number(b.dataset.principalFoto),1)[0]);desenharFotosProduto();}));
   el.querySelectorAll('[data-ver-foto]').forEach(b=>b.addEventListener('click',()=>abrirGaleriaFotos(fp.fotos,fp.nome||'Produto pronto',Number(b.dataset.verFoto))));
+  el.querySelectorAll('[data-trocar-foto]').forEach(b=>b.addEventListener('click',()=>selecionarFotoProduto(Number(b.dataset.trocarFoto))));
   const adicionar=form.querySelector('#btnAdicionarFotos');if(adicionar){adicionar.disabled=fp.fotosProcessando||fp.fotos.length>=3;adicionar.textContent=fp.fotosProcessando?'Preparando fotos…':'+ Adicionar fotos';}
   const contador=form.querySelector('#contagemFotosProduto');if(contador)contador.textContent=fp.fotos.length+' de 3 fotos';
   const salvar=form.querySelector('button[type=submit]');if(salvar)salvar.disabled=!!fp.fotosProcessando;
@@ -1765,7 +1778,7 @@ function desenharFormProduto(){
     </div>
     <section class="form-secao"><div class="secao-titulo"><div><h4>Fotos do produto pronto</h4><p class="muted">Até 3 fotos. A primeira é a principal.</p></div></div>
       <div class="fotos-produto" id="editorFotosProduto"></div>
-      <div class="fotos-adicionar"><button class="btn sec" type="button" id="btnAdicionarFotos" onclick="document.getElementById('entradaFotosProduto').click()">+ Adicionar fotos</button><span class="muted" id="contagemFotosProduto"></span></div>
+      <div class="fotos-adicionar"><button class="btn sec" type="button" id="btnAdicionarFotos" onclick="selecionarFotoProduto()">+ Adicionar fotos</button><span class="muted" id="contagemFotosProduto"></span></div>
       <input hidden type="file" id="entradaFotosProduto" accept="image/*" multiple aria-label="Adicionar fotos do produto pronto" onchange="adicionarFotosProduto(this)">
       <p class="muted" id="statusFotosProduto" role="status" aria-live="polite"></p>
     </section>
@@ -2646,13 +2659,16 @@ function validarConexaoNuvem(url,key){
 }
 function guardarNuvem(){localStorage.setItem(CLOUD_KEY,JSON.stringify(nuvem));}
 async function requisicaoNuvem(config,caminho,{method='GET',body,token}={}){
+  const corpo=body===undefined?undefined:JSON.stringify(body);
+  const leituraDados=caminho.startsWith('/rest/v1/papelaria_sync?')&&/[?&]select=[^&]*payload/.test(caminho);
+  const prazo=leituraDados||(corpo?.length||0)>1024*1024?120000:15000;
   const controlador=new AbortController();
-  const timer=setTimeout(()=>controlador.abort(),15000);
+  const timer=setTimeout(()=>controlador.abort(),prazo);
   try{
     const headers={apikey:config.key,'Content-Type':'application/json'};
     if(token)headers.Authorization='Bearer '+token;
     const res=await fetch(config.url+caminho,{method,headers,cache:'no-store',
-      signal:controlador.signal,body:body===undefined?undefined:JSON.stringify(body)});
+      signal:controlador.signal,body:corpo});
     const texto=await res.text();let resposta=null;
     try{resposta=texto?JSON.parse(texto):null;}catch(e){}
     if(!res.ok){

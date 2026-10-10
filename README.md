@@ -90,11 +90,15 @@ Em **Produtos → Editar → Fotos do produto pronto**, adicione até três foto
 escolha a principal e salve o produto. A lista mostra a foto principal; a ficha
 permite ampliar as imagens, navegar pelas miniaturas e deslizar no celular.
 Cancelar preserva as fotos já salvas. As imagens são convertidas no aparelho em
-JPEG com até 1280 pixels no maior lado e 150 KB por foto, sem os metadados do
-arquivo original. Elas fazem parte dos dados privados, da sincronização existente
+JPEG com até 2560 pixels no maior lado e 1 MB por foto, com qualidade de 90 a 94%,
+sem os metadados do arquivo original. Elas fazem parte dos dados privados, da sincronização existente
 e do backup; não são publicadas no Git nem em uma galeria externa.
 Cadastros com fotos usam IndexedDB para dados e estado de sincronização, evitando
 o limite do localStorage. A nuvem só baixa os dados completos quando a versão muda.
+Para atualizar imagens salvas com a compressão anterior, use **Trocar foto** e
+selecione o arquivo original. A troca preserva a posição da foto e só é gravada
+ao salvar o produto. O PDF e o compartilhamento usam a imagem salva completa,
+sem outra redução de resolução pelo app.
 
 Na ficha do orçamento, **Salvar PDF** gera e baixa o documento diretamente no
 aparelho, com fundo branco, itens, total, observações e a foto principal atual

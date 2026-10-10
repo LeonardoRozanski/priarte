@@ -3,7 +3,7 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { Blob, Buffer } from 'node:buffer';
 
-class TestAbortController { constructor() { this.signal = {}; } abort() {} }
+class TestAbortController { constructor() { this.signal = { aborted: false }; } abort() { this.signal.aborted = true; } }
 const atob = value => Buffer.from(value, 'base64').toString('utf8');
 
 const html = await readFile(new URL('../app/index.html', import.meta.url), 'utf8');
@@ -86,6 +86,7 @@ function makeDevice(cloud, { storage = new Storage(), cloudEnabled = true, handl
   device.sync = () => device.run('checarAtualizacaoRemota(false)');
   device.edit = name => { context.newName = name; device.run('db.config.nomeLoja=newName;saveDB()'); };
   device.flushSave = async () => { for (const [id, timer] of [...timeouts]) if (timer.ms === 400) { timeouts.delete(id); await timer.fn(); } };
+  device.advance = ms => { for (const [id, timer] of [...timeouts]) if (timer.ms <= ms) { timeouts.delete(id); timer.fn(); } };
   device.login = () => {
     const button = { disabled: false }, error = { textContent: '' };
     const form = { url: { value: 'https://teste.supabase.co' }, chave: { value: 'sb_publishable_teste' }, email: { value: 'teste@example.com' }, senha: { value: 'senha-apenas-no-formulario' }, querySelector: selector => selector === '[role=alert]' ? error : button };
@@ -366,6 +367,20 @@ export async function runTests() {
     assert.equal(pc.get('db.produtos[0].precoFinalManual'),12.34);
     await pc.run('db.produtos[0].fotos.splice(1,1);saveDB()');await pc.sync();await iphone.sync();
     assert.deepEqual(iphone.get('db.produtos[0].fotos.map(f=>f.id)'),['foto-2','foto-3']);
+  });
+
+  await check('Fotos maiores podem levar 30 segundos para enviar e receber; consultas rápidas ainda detectam conexão parada', async () => {
+    const cloud = new Cloud(), pc = makeDevice(cloud);
+    pc.context.fetch = async (url,options) => {
+      pc.advance(30000);
+      if(options.signal.aborted){const erro=new Error('Tempo de conexão esgotado');erro.name='AbortError';throw erro;}
+      return cloud.fetch(url,options,pc);
+    };
+    await pc.run("requisicaoNuvem(nuvem,'/rest/v1/rpc/salvar_papelaria',{method:'POST',token:'access-teste',body:{p_versao:0,p_payload:{dados:{produtos:[{id:'produto-foto-grande',fotos:[{id:'foto-grande',dados:'data:image/jpeg;base64,'+'A'.repeat(1400000)}]}]}}}})");
+    const recebido=await pc.run("requisicaoNuvem(nuvem,'/rest/v1/papelaria_sync?select=version,payload,updated_at',{token:'access-teste'})");
+    assert.equal(recebido[0].payload.dados.produtos[0].fotos[0].dados.length,1400023);
+    await assert.rejects(pc.run("requisicaoNuvem(nuvem,'/rest/v1/papelaria_sync?select=version,updated_at',{token:'access-teste'})"),/Sem conexão/);
+    assert.equal(cloud.writes.length,1);
   });
 
   await check('Verificações sem mudança baixam apenas a versão; novos dados recebem o payload completo', async () => {

@@ -119,7 +119,7 @@ def main():
             assert metadata['tipo'] == 'image/jpeg' and metadata['bytes'] > 0
             assert metadata.get('url') is None and metadata['texto'] == 'Caixa de presente fictícia'
             assert metadata['ativo']
-            assert page.evaluate("async () => btoa(String.fromCharCode(...new Uint8Array(await envioTeste.dados.files[0].arrayBuffer())))") == page.evaluate('db.produtos[0].fotos[1].dados.split(",")[1]')
+            assert page.evaluate("() => new Promise(resolve=>{const leitor=new FileReader();leitor.onload=()=>resolve(leitor.result.split(',')[1]);leitor.readAsDataURL(envioTeste.dados.files[0]);})") == page.evaluate('db.produtos[0].fotos[1].dados.split(",")[1]')
             page.evaluate("() => {navigator.share=async()=>{throw new DOMException('cancelado','AbortError')};}")
             page.get_by_role('button', name='Enviar foto', exact=True).click()
             expect(page.locator('#modal h3')).to_have_text('Fotos do orçamento')
@@ -190,6 +190,41 @@ def main():
             drawn = sum(sum(operator == b'Do' for _, operator in ContentStream(part.get_contents(), reader).operations) for part in reader.pages)
             assert drawn == 36  # Marca uma vez, foto em cada um dos 35 itens.
             passed.append(f'Fotos acompanham todos os itens em {len(reader.pages)} páginas sem alterar valores nem repetir fotos na galeria')
+
+            # The PDF and downloaded file must retain every JPEG byte, not a reduced thumbnail.
+            photo_data=page.evaluate("""async () => {
+              const c=document.createElement('canvas');c.width=3200;c.height=2400;const ctx=c.getContext('2d');
+              ctx.fillStyle='#fbf6ef';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#c58291';ctx.fillRect(250,250,2700,1900);
+              ctx.fillStyle='#fff';ctx.fillRect(500,500,2200,1400);ctx.fillStyle='#493338';ctx.font='100px sans-serif';ctx.fillText('Produto ficticio',820,980);
+              ctx.font='36px sans-serif';for(let i=0;i<10;i++)ctx.fillText('Detalhes da personalizacao '+i,820,1140+i*55);
+              for(let x=600;x<2600;x+=10)ctx.fillRect(x,550,2,200);
+              const blob=await new Promise(resolve=>c.toBlob(resolve,'image/png'));
+              const foto=await prepararFotoProduto(new File([blob],'original-ficticio.png',{type:'image/png'}));
+              db.produtos[0].fotos[0]=foto;db.orcamentos.push({...db.orcamentos[0],id:'orc-detalhes',numero:'ORC-DETALHES',itens:[{produtoId:'p-foto-a',nome:db.produtos[0].nome,qtd:1,precoUnit:10}],total:10});
+              return foto;
+            }""")
+            assert photo_data['largura']==2560 and photo_data['altura']==1920
+            path=output/'orcamento-foto-alta-qualidade.pdf'
+            with page.expect_download() as download:
+                page.evaluate("imprimirDoc('orcamento','orc-detalhes')")
+            download.value.save_as(path)
+            reader,text=pdf_text(path)
+            xobjects=reader.pages[0]['/Resources']['/XObject'].get_object()
+            detail=[obj.get_object() for obj in xobjects.values() if obj.get_object().get('/Width')==2560]
+            assert len(detail)==1 and detail[0]['/Height']==1920
+            expected_jpeg=base64.b64decode(photo_data['dados'].split(',')[1])
+            assert detail[0].get_data()==expected_jpeg and 'R$ 10,00' in text
+            page.evaluate("abrirFotosProduto('p-foto-a')")
+            with page.expect_download() as download:
+                page.get_by_role('button',name='Baixar foto',exact=True).click()
+            filename=output/'foto-alta-qualidade.jpg';download.value.save_as(filename)
+            assert filename.read_bytes()==expected_jpeg
+            # Sharing keeps the same high-resolution file and still requires a real user click.
+            page.evaluate("() => {navigator.canShare=()=>true;navigator.share=async dados=>{window.envioHQ=dados.files[0];};}")
+            page.get_by_role('button',name='Enviar foto',exact=True).click()
+            assert page.evaluate('envioHQ.size')==len(expected_jpeg)
+            assert page.evaluate("() => new Promise(resolve=>{const leitor=new FileReader();leitor.onload=()=>resolve(leitor.result);leitor.readAsDataURL(envioHQ);})")==photo_data['dados']
+            passed.append('Foto de 2560 pixels chega intacta ao PDF, ao download e ao compartilhamento')
 
             page.evaluate("""() => {
               const d=db.orcamentos[0];d.itens=d.itens.slice(0,2);d.itens[0].produtoId='produto-removido';
