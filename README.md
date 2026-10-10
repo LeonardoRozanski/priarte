@@ -97,10 +97,15 @@ Cadastros com fotos usam IndexedDB para dados e estado de sincronização, evita
 o limite do localStorage. A nuvem só baixa os dados completos quando a versão muda.
 
 Na ficha do orçamento, **Salvar PDF** gera e baixa o documento diretamente no
-aparelho, com fundo branco, itens, total e observações, sem o endereço do sistema.
+aparelho, com fundo branco, itens, total, observações e a foto principal atual
+dos produtos cadastrados, sem o endereço do sistema.
 O PDF funciona offline; a biblioteca jsPDF 4.2.1 (MIT) está incorporada no HTML.
 **Mensagem WhatsApp** prepara um texto
 que pode ser revisado, copiado ou aberto no WhatsApp para escolher o cliente.
+**Fotos dos produtos** abre as imagens do orçamento. Na galeria, **Enviar foto**
+abre o compartilhamento do aparelho para escolher o WhatsApp. **Baixar foto**
+também fica disponível para anexar a imagem manualmente na conversa, inclusive
+quando o WhatsApp não aparece entre os destinos de compartilhamento.
 Os botões principais ficam no rodapé das janelas, enquanto os campos rolam;
 **Salvar configurações** também permanece visível acima da navegação do celular.
 
@@ -182,3 +187,8 @@ interativos, reposição e navegação responsiva com dados fictícios. Também 
 backup, falhas de gravação e dados maiores que 6 MB, com imagens fictícias.
 Aceita `PRIARTE_ENGINE=webkit`, `PRIARTE_QA_DIR` e `PRIARTE_APP_URL` para conferir
 a versão publicada em um navegador isolado, sem conta de nuvem.
+
+`python tests/fotos-orcamento.test.py` confere as fotos principais nos PDFs,
+paginação com imagens, botões do catálogo e compartilhamento de fotos com
+alternativa para baixar e anexar no WhatsApp. Usa apenas imagens fictícias e
+aceita as mesmas variáveis dos testes de fotos.

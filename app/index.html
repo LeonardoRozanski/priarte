@@ -165,7 +165,7 @@
   table.grid td:first-child .btn.sec{background:none;color:var(--ink);text-align:left;justify-content:flex-start;padding:6px 0;font-weight:600;white-space:normal}
   table.grid td:first-child .btn.sec:hover{color:var(--accent)}
   .acoes-celula{white-space:normal;min-width:160px}
-  .acoes-celula .btn{margin:2px 0}
+  .acoes-celula .btn{margin:2px 0;vertical-align:middle;height:44px}
   .resumo-linha{gap:16px;padding:7px 0;align-items:baseline}
   .resumo-linha>:last-child{flex-shrink:0;text-align:right;max-width:65%;overflow-wrap:anywhere}
   .resumo-linha>:first-child{min-width:0;overflow-wrap:anywhere}
@@ -362,7 +362,7 @@
   .galeria-produto:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:12px}
   .galeria-imagem img{display:block;max-width:100%;max-height:55vh;max-height:55dvh;object-fit:contain}
   .galeria-controles{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
-  .galeria-miniaturas{display:flex;justify-content:center;gap:10px;margin-top:14px}
+  .galeria-miniaturas{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
   .galeria-miniaturas button{width:64px;height:64px;border:2px solid transparent;border-radius:10px;overflow:hidden;padding:0;cursor:pointer;background:var(--input)}
   .galeria-miniaturas button[aria-pressed=true]{border-color:var(--accent)}
   .galeria-miniaturas img{width:100%;height:100%;object-fit:cover;display:block}
@@ -402,6 +402,8 @@
     #printArea th{background:#f4e9ec;color:#493338;font-size:9pt;font-weight:700;text-align:left;padding:10px 8px;border-bottom:1px solid #d7b7bf}
     #printArea td{padding:11px 8px;font-size:10pt;vertical-align:top;border-bottom:1px solid #e7dde0}
     #printArea .documento-valor{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;overflow-wrap:normal}
+    #printArea .documento-produto{display:flex;align-items:center;gap:4mm}
+    #printArea .documento-produto img{width:24mm;height:24mm;object-fit:contain;flex-shrink:0}
     #printArea .documento-final{break-inside:avoid;margin-top:20px}
     #printArea .documento-total{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-left:auto;width:62%;padding:13px 16px;background:#f4e9ec;border-radius:6px;color:#493338}
     #printArea .documento-total strong{font-size:18pt;white-space:nowrap}
@@ -858,7 +860,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.09-13';
+const APP_VERSAO='2026.10.10-01';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1582,6 +1584,52 @@ function excluirLote(loteId,materialId){
 function fotosProduto(produto){
   return Array.isArray(produto?.fotos)?produto.fotos.filter(f=>f&&typeof f.dados==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(f.dados)).slice(0,3):[];
 }
+function fotosItemDocumento(item){return fotosProduto(produtoById(item.produtoId));}
+function fotosDocumento(d){
+  const vistas=new Set(),fotos=[];
+  for(const item of d.itens)fotosItemDocumento(item).forEach((foto,i)=>{
+    const chave=item.produtoId+'|'+foto.dados;if(vistas.has(chave))return;vistas.add(chave);
+    fotos.push({...foto,nome:item.nome,numero:i+1});
+  });
+  return fotos;
+}
+function arquivoFotoProduto(foto,nome,numero=1){
+  const partes=foto.dados.match(/^data:(image\/(jpeg|png|webp));base64,([A-Za-z0-9+/]+=*)$/);
+  if(!partes)throw new Error('Foto inválida.');
+  const binario=atob(partes[3]),bytes=Uint8Array.from(binario,c=>c.charCodeAt(0));
+  const extensao=partes[2]==='jpeg'?'jpg':partes[2];
+  const base=String(nome||'Produto').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||'Produto';
+  return new File([bytes],base+'-foto-'+numero+'.'+extensao,{type:partes[1]});
+}
+function baixarFotoProduto(arquivo){
+  const url=URL.createObjectURL(arquivo),a=document.createElement('a');
+  a.href=url;a.download=arquivo.name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+function abrirEnvioFoto(foto,nome,arquivo){
+  abrirModal(`<h3>Foto para WhatsApp</h3><p><strong>${esc(nome)}</strong></p>
+    <div class="galeria-imagem"><img src="${esc(foto.dados)}" alt="Foto do produto pronto"></div>
+    <p class="muted">Baixe a foto e anexe à conversa do cliente no WhatsApp.</p>
+    <div class="acoes"><button class="btn" type="button" id="baixarFotoWhatsApp">Baixar foto</button>
+    <a class="btn sec" href="https://wa.me/" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>
+    <button class="btn neutro" type="button" onclick="fecharModal()">Voltar</button></div>`,{empilhar:true});
+  $('#baixarFotoWhatsApp').addEventListener('click',()=>baixarFotoProduto(arquivo));
+}
+async function compartilharFotoProduto(foto,nome,numero=1,botao){
+  if(botao?.disabled)return;
+  if(botao)botao.disabled=true;
+  try{
+    // A criação do arquivo é síncrona para preservar o toque que abre o compartilhamento.
+    const arquivo=arquivoFotoProduto(foto,nome,numero);
+    const dados={files:[arquivo],title:nome,text:nome};
+    if(navigator.share&&navigator.canShare?.({files:[arquivo]})){
+      try{await navigator.share(dados);return;}
+      catch(e){if(e.name==='AbortError')return;}
+    }
+    abrirEnvioFoto(foto,nome,arquivo);
+  }catch(e){toast('Não foi possível preparar esta foto para envio.');}
+  finally{if(botao)botao.disabled=false;}
+}
 function formularioFotosProduto(){
   const atual=$('#editorFotosProduto');if(atual)return atual.closest('form');
   for(const modal of [...pilhaModal].reverse())for(const no of modal.nos){
@@ -1648,15 +1696,19 @@ function abrirGaleriaFotos(fotos,nome,indice=0){
   abrirModal(`<h3>${esc(nome)}</h3><div class="galeria-produto">
     <div class="galeria-imagem"><img id="fotoAmpliadaProduto" alt=""></div>
     <div class="galeria-controles"><button class="btn neutro" type="button" id="fotoAnterior" aria-label="Foto anterior">←</button><span id="posicaoFotoProduto" role="status" aria-live="polite"></span><button class="btn neutro" type="button" id="fotoSeguinte" aria-label="Próxima foto">→</button></div>
+    <p id="nomeFotoGaleria" class="muted" ${fotos.some(f=>f.nome)?'':'hidden'}></p>
     <div class="galeria-miniaturas">${fotos.map((f,i)=>`<button type="button" data-foto-galeria="${i}" aria-label="Ver foto ${i+1}" aria-pressed="false"><img src="${esc(f.dados)}" alt=""></button>`).join('')}</div></div>
-    <div class="acoes"><button class="btn neutro" type="button" onclick="fecharModal()">Voltar</button></div>`,{empilhar:true});
+    <div class="acoes"><button class="btn" type="button" id="enviarFotoProduto">Enviar foto</button><button class="btn sec" type="button" id="baixarFotoProduto">Baixar foto</button><button class="btn neutro" type="button" onclick="fecharModal()">Voltar</button></div>`,{empilhar:true});
   const galeria=$('#modal .galeria-produto'),imagem=$('#fotoAmpliadaProduto');
   const mostrar=indice=>{
     atual=(indice+fotos.length)%fotos.length;imagem.src=fotos[atual].dados;imagem.alt='Foto '+(atual+1)+' de '+nome;
     $('#posicaoFotoProduto').textContent='Foto '+(atual+1)+' de '+fotos.length;
+    $('#nomeFotoGaleria').textContent=fotos[atual].nome||nome;
     galeria.querySelectorAll('[data-foto-galeria]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.fotoGaleria)===atual)));
   };
   $('#fotoAnterior').disabled=$('#fotoSeguinte').disabled=fotos.length<2;
+  $('#enviarFotoProduto').addEventListener('click',ev=>compartilharFotoProduto(fotos[atual],fotos[atual].nome||nome,fotos[atual].numero||atual+1,ev.currentTarget));
+  $('#baixarFotoProduto').addEventListener('click',()=>{try{baixarFotoProduto(arquivoFotoProduto(fotos[atual],fotos[atual].nome||nome,fotos[atual].numero||atual+1));}catch(e){toast('Não foi possível baixar esta foto.');}});
   $('#fotoAnterior').addEventListener('click',()=>mostrar(atual-1));$('#fotoSeguinte').addEventListener('click',()=>mostrar(atual+1));
   galeria.querySelectorAll('[data-foto-galeria]').forEach(b=>b.addEventListener('click',()=>mostrar(Number(b.dataset.fotoGaleria))));
   galeria.addEventListener('keydown',ev=>{if(ev.key==='ArrowLeft'||ev.key==='ArrowRight'){ev.preventDefault();mostrar(atual+(ev.key==='ArrowRight'?1:-1));}});
@@ -2110,9 +2162,11 @@ function abrirMensagemWhatsApp(id){
       <p id="retornoMensagem" class="muted" role="status" aria-live="polite"></p>
       <div class="acoes"><button class="btn" type="button" onclick="copiarMensagemWhatsApp()">Copiar mensagem</button>
       <a id="linkWhatsApp" class="btn sec" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>
+      ${fotosDocumento(d).length?'<button class="btn sec" type="button" id="fotosWhatsApp">Fotos dos produtos</button>':''}
       <button class="btn neutro" type="button" onclick="fecharModal()">Voltar</button></div>
     </form>`,{empilhar:true});
   atualizarLinkWhatsApp();
+  $('#fotosWhatsApp')?.addEventListener('click',()=>abrirGaleriaFotos(fotosDocumento(d),'Fotos do orçamento'));
 }
 function atualizarLinkWhatsApp(){
   const texto=$('#mensagemWhatsApp').value;
@@ -2207,14 +2261,21 @@ function gerarPDFDocumento(tipo,d){
   if(tipo==='pedido'&&d.prazo){y+=3;paragrafo('Prazo de entrega: '+fmtData(d.prazo));}
   y+=7;garantir(25);cabecalhoTabela();
   for(const item of d.itens){
-    const descricao=linhas(item.nome,90),altura=Math.max(12,descricao.length*5+6);
+    const foto=fotosItemDocumento(item)[0];let imagem=null;
+    if(foto){try{const props=pdf.getImageProperties(foto.dados);if(props.width>0&&props.height>0)imagem={dados:foto.dados,largura:props.width,altura:props.height};}catch(e){}}
+    const descricao=linhas(item.nome,imagem?62:90),altura=Math.max(imagem?30:12,descricao.length*5+6);
     if(y+altura>limite&&altura<=237)novaPagina(true);
     let restante=descricao.slice(),primeiraParte=true;
     while(restante.length){
-      if(limite-y<11)novaPagina(true);
+      const comFoto=primeiraParte&&imagem;
+      if(limite-y<(comFoto?30:11))novaPagina(true);
       const quantidade=Math.max(1,Math.floor((limite-y-6)/5));
-      const trecho=restante.splice(0,quantidade),alturaTrecho=Math.max(12,trecho.length*5+6);
-      trecho.forEach((linha,i)=>escrever(linha,17,y+3+i*5));
+      const trecho=restante.splice(0,quantidade),alturaTrecho=Math.max(comFoto?30:12,trecho.length*5+6);
+      if(comFoto){
+        const escala=Math.min(24/imagem.largura,24/imagem.altura),w=imagem.largura*escala,h=imagem.altura*escala;
+        pdf.addImage(imagem.dados,17+(24-w)/2,y+3+(24-h)/2,w,h);
+      }
+      trecho.forEach((linha,i)=>escrever(linha,imagem?45:17,y+3+i*5));
       if(primeiraParte){
         valorColuna(fmtQtd(item.qtd),125,14,y+3);
         valorColuna(fmtCustoUnit(item.precoUnit),159,30,y+3);
@@ -2248,7 +2309,7 @@ function gerarPDFDocumento(tipo,d){
 function imprimirDoc(tipo,id){
   const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
   const titulo=tipo==='orcamento'?'ORÇAMENTO':'PEDIDO';
-  const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="documento-valor">${fmtQtd(i.qtd)}</td><td class="documento-valor">${fmtCustoUnit(i.precoUnit)}</td><td class="documento-valor">${fmtBRL(subtotalDoc(i))}</td></tr>`).join('');
+  const linhas=d.itens.map(i=>{const foto=fotosItemDocumento(i)[0];return `<tr><td><div class="documento-produto">${foto?`<img src="${esc(foto.dados)}" alt="Foto do produto pronto">`:''}<span>${esc(i.nome)}</span></div></td><td class="documento-valor">${fmtQtd(i.qtd)}</td><td class="documento-valor">${fmtCustoUnit(i.precoUnit)}</td><td class="documento-valor">${fmtBRL(subtotalDoc(i))}</td></tr>`;}).join('');
   $('#printArea').innerHTML=`
     <header class="documento-cabecalho">
       <div class="documento-marca"><img class="documento-logo" src="${LOGO}" alt="">
