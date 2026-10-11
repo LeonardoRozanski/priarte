@@ -169,15 +169,14 @@
   .resumo-linha{gap:16px;padding:7px 0;align-items:baseline}
   .resumo-linha>:last-child{flex-shrink:0;text-align:right;max-width:65%;overflow-wrap:anywhere}
   .resumo-linha>:first-child{min-width:0;overflow-wrap:anywhere}
-  .overlay{inset:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);background:none;padding:32px 16px;overscroll-behavior:contain;scroll-padding-block:20px}
+  .overlay{inset:auto;top:calc(var(--topo-janela,0px) + var(--safe-top));left:calc(var(--esquerda-janela,0px) + var(--safe-left));width:calc(var(--largura-janela,100vw) - var(--safe-left) - var(--safe-right));height:calc(var(--altura-janela,100dvh) - var(--safe-top) - var(--safe-bottom));background:none;padding:32px 16px;overflow:hidden;overscroll-behavior:contain}
   .overlay::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:-1}
-  .modal{padding:0;overflow-wrap:anywhere;width:100%;display:flex;flex-direction:column;max-height:calc(100vh - var(--safe-top) - var(--safe-bottom) - 64px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 64px)}
+  .modal{padding:0;overflow-wrap:anywhere;width:100%;display:flex;flex-direction:column;max-height:100%}
   .modal-cabecalho{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid var(--line);flex-shrink:0}
   .modal .modal-cabecalho h3{font-size:1.25rem;line-height:1.35;padding:0;margin:0;min-width:0}
   .modal .fechar{float:none;width:44px;height:44px;margin:0;border-radius:50%;flex-shrink:0}
   .modal .fechar:hover{background:var(--accent-soft);color:var(--accent)}
   .modal-conteudo{padding:24px;overflow:auto;min-height:0;overscroll-behavior:contain;scroll-padding:16px}
-  .modal{max-height:calc(var(--altura-janela,100dvh) - var(--safe-top) - var(--safe-bottom) - 64px)}
   .modal-form{display:flex;flex-direction:column;min-height:0;overflow:hidden;margin:0}
   .modal-conteudo{flex:1}
   .modal-rodape{flex-shrink:0;padding:14px 24px;border-top:1px solid var(--line);background:var(--panel);border-radius:0 0 var(--radius) var(--radius)}
@@ -188,7 +187,13 @@
   .mensagem-whatsapp{min-height:300px;resize:vertical;line-height:1.6}
   .modal-conteudo>:first-child{margin-top:0}
   .modal-conteudo>:last-child{margin-bottom:0}
-  body.modal-aberto{overflow:hidden}
+  html.modal-aberto{overflow:hidden;overscroll-behavior:none}
+  body.modal-aberto{position:fixed;top:var(--rolagem-modal,0px);left:0;right:0;width:100%;overflow:hidden;overscroll-behavior:none}
+  body.modal-compacta .overlay{padding-block:8px}
+  body.modal-compacta .modal-cabecalho{padding:8px 16px}
+  body.modal-compacta .modal-conteudo{padding:12px 16px;scroll-padding:8px}
+  body.modal-compacta .modal-conteudo textarea{min-height:44px;max-height:var(--altura-campo-modal,150px);resize:none}
+  body.modal-compacta .modal-rodape{padding:8px 16px}
   .catalogo-filtros{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
   .catalogo-filtros .busca{flex:1;min-width:200px}
   .catalogo-filtros select{max-width:240px}
@@ -282,11 +287,10 @@
     .trabalho-fim{max-width:45%}
     .badge{font-size:.7rem;padding:4px 8px;white-space:normal}
     .overlay{padding:12px 10px}
-    .modal{padding:0;border-radius:16px;max-width:100%;max-height:calc(100vh - var(--safe-top) - var(--safe-bottom) - 24px);max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)}
+    .modal{padding:0;border-radius:16px;max-width:100%}
     .modal-cabecalho{padding:12px 16px;gap:10px}
     .modal .modal-cabecalho h3{font-size:1.15rem}
     .modal-conteudo{padding:20px 16px}
-    .modal{max-height:calc(var(--altura-janela,100dvh) - var(--safe-top) - var(--safe-bottom) - 24px)}
     .modal-rodape{padding:12px 16px}
     .acoes-pagina{bottom:calc(66px + var(--safe-bottom));padding:10px max(16px,var(--safe-right)) 10px max(16px,var(--safe-left))}
     .acoes-pagina .btn{width:100%}
@@ -380,7 +384,7 @@
   @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
   @page{size:A4;margin:16mm 15mm}
   @media print{
-    html,body,body.claro,body.modal-aberto{background:#fff!important;color:#282327!important;margin:0!important;padding:0!important;height:auto!important;overflow:visible!important}
+    html,body,body.claro,body.modal-aberto{position:static!important;width:auto!important;background:#fff!important;color:#282327!important;margin:0!important;padding:0!important;height:auto!important;overflow:visible!important}
     body>*{display:none !important}
     #printArea{display:block!important;font:10.5pt/1.5 Arial,sans-serif;color:#282327;padding:0;overflow-wrap:anywhere;print-color-adjust:exact;-webkit-print-color-adjust:exact}
     #printArea *{box-sizing:border-box}
@@ -861,7 +865,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.10-03';
+const APP_VERSAO='2026.10.10-04';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1146,10 +1150,16 @@ function prepararInterface(raiz){
 
 /* ================= modal ================= */
 let focoAntesModal=null;
+let posicaoAntesModal=null;
+let quadroAjusteModal=null;
 const pilhaModal=[];
 function abrirModal(html,{empilhar=false}={}){
   const jaAberto=$('#overlay').classList.contains('aberto');
-  if(!jaAberto)focoAntesModal=document.activeElement;
+  if(!jaAberto){
+    focoAntesModal=document.activeElement;
+    posicaoAntesModal={x:window.scrollX,y:window.scrollY};
+    document.body.style.setProperty('--rolagem-modal',-posicaoAntesModal.y+'px');
+  }
   const modal=$('#modal');
   if(empilhar&&jaAberto){
     pilhaModal.push({nos:Array.from(modal.childNodes),scroll:modal.querySelector('.modal-conteudo')?.scrollTop||0,foco:document.activeElement});
@@ -1164,10 +1174,11 @@ function abrirModal(html,{empilhar=false}={}){
   fixarAcoesModal(modal,conteudo);
   ajustarAlturaJanela();
   prepararInterface(modal);
-  $('#overlay').classList.add('aberto');document.body.classList.add('modal-aberto');
+  $('#overlay').classList.add('aberto');document.body.classList.add('modal-aberto');document.documentElement.classList.add('modal-aberto');
   $('#overlay').scrollTop=0;
   $('main').inert=true;$('header.top').inert=true;
   modal.focus({preventScroll:true});
+  agendarAjusteModal();
 }
 function fixarAcoesModal(modal,conteudo){
   const form=Array.from(conteudo.children).find(el=>el.tagName==='FORM');
@@ -1192,20 +1203,57 @@ function fixarAcoesModal(modal,conteudo){
   }
 }
 function ajustarAlturaJanela(){
-  document.documentElement.style.setProperty('--altura-janela',(window.visualViewport?.height||window.innerHeight)+'px');
+  const area=window.visualViewport,estilo=document.documentElement.style;
+  const altura=area?.height||window.innerHeight;
+  estilo.setProperty('--altura-janela',altura+'px');
+  estilo.setProperty('--largura-janela',(area?.width||window.innerWidth)+'px');
+  estilo.setProperty('--topo-janela',Math.max(0,area?.offsetTop||0)+'px');
+  estilo.setProperty('--esquerda-janela',Math.max(0,area?.offsetLeft||0)+'px');
+  document.body.classList.toggle('modal-compacta',altura<430);
 }
-window.visualViewport?.addEventListener('resize',ajustarAlturaJanela);
-window.addEventListener('resize',ajustarAlturaJanela);
+function manterCampoModalVisivel(){
+  const conteudo=$('#modal .modal-conteudo'),campo=document.activeElement;
+  if(!conteudo)return;
+  const estilo=getComputedStyle(conteudo);
+  conteudo.style.setProperty('--altura-campo-modal',Math.max(44,conteudo.clientHeight-parseFloat(estilo.paddingTop)-parseFloat(estilo.paddingBottom))+'px');
+  if(!conteudo.contains(campo)||!campo.matches('input,textarea,select,[contenteditable="true"]'))return;
+  const limite=conteudo.getBoundingClientRect(),posicao=campo.getBoundingClientRect();
+  const margem=Math.min(8,Math.max(0,(limite.height-Math.min(posicao.height,44))/2));
+  const topo=limite.top+margem,fundo=limite.bottom-margem;
+  if(posicao.top<topo||posicao.height>fundo-topo){
+    conteudo.scrollTop+=posicao.top-topo;
+  }else if(posicao.bottom>fundo){
+    conteudo.scrollTop+=posicao.bottom-fundo;
+  }
+}
+function agendarAjusteModal(){
+  if(quadroAjusteModal!==null)return;
+  quadroAjusteModal=requestAnimationFrame(()=>{
+    quadroAjusteModal=null;
+    ajustarAlturaJanela();
+    if($('#overlay').classList.contains('aberto')){
+      $('#overlay').scrollTop=0;
+      manterCampoModalVisivel();
+    }
+  });
+}
+window.visualViewport?.addEventListener('resize',agendarAjusteModal);
+window.visualViewport?.addEventListener('scroll',agendarAjusteModal);
+window.addEventListener('resize',agendarAjusteModal);
+$('#modal').addEventListener('focusin',agendarAjusteModal);
 function fecharModal(){
   if(pilhaModal.length){
     const anterior=pilhaModal.pop(),modal=$('#modal');modal.replaceChildren(...anterior.nos);
     if(modal.querySelector('h3'))modal.setAttribute('aria-labelledby','tituloModal');else modal.removeAttribute('aria-labelledby');
     const conteudo=modal.querySelector('.modal-conteudo');if(conteudo)conteudo.scrollTop=anterior.scroll;
     if(anterior.foco?.isConnected)anterior.foco.focus({preventScroll:true});else modal.focus({preventScroll:true});
+    agendarAjusteModal();
     return;
   }
-  $('#overlay').classList.remove('aberto');$('#modal').innerHTML='';document.body.classList.remove('modal-aberto');
+  $('#overlay').classList.remove('aberto');$('#modal').innerHTML='';document.body.classList.remove('modal-aberto','modal-compacta');document.documentElement.classList.remove('modal-aberto');
+  document.body.style.removeProperty('--rolagem-modal');
   $('main').inert=false;$('header.top').inert=false;
+  if(posicaoAntesModal){window.scrollTo(posicaoAntesModal.x,posicaoAntesModal.y);posicaoAntesModal=null;}
   if(focoAntesModal?.isConnected)focoAntesModal.focus({preventScroll:true});
 }
 $('#overlay').addEventListener('click',e=>{if(e.target.id==='overlay')fecharModal();});
