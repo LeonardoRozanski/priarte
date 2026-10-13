@@ -175,6 +175,10 @@
   .modal{padding:0;overflow-wrap:anywhere;width:100%;min-width:0;display:flex;flex-direction:column;max-height:100%;container-type:inline-size;container-name:janela}
   .modal-form,.modal-conteudo,.modal-cabecalho,.modal-rodape{min-width:0;max-width:100%}
   .modal .campo input,.modal .campo select,.modal .campo textarea{width:100%}
+  .modal .formgrid:has(input[type=date]){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .modal input[type=date]{appearance:none;-webkit-appearance:none;display:block;min-width:0;width:100%;max-width:100%;height:44px;line-height:normal;text-align:left}
+  .modal input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left;margin:0}
+  .modal input[type=date]::-webkit-datetime-edit{padding:0}
   .modal-cabecalho{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid var(--line);flex-shrink:0}
   .modal .modal-cabecalho h3{font-size:1.25rem;line-height:1.35;padding:0;margin:0;min-width:0}
   .modal .fechar{float:none;width:44px;height:44px;margin:0;border-radius:50%;flex-shrink:0}
@@ -239,9 +243,6 @@
   .documento-item-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .pedido-situacao{align-items:end;margin-top:20px}
   .pedido-situacao .campo{min-width:0}
-  .pedido-situacao input[type=date]{appearance:none;-webkit-appearance:none;display:block;min-width:0;width:100%;max-width:100%;height:44px;line-height:normal;text-align:left}
-  .pedido-situacao input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left;margin:0}
-  .pedido-situacao input[type=date]::-webkit-datetime-edit{padding:0}
   .pedido-financeiro{padding:18px;background:var(--input);border:1px solid var(--line);border-radius:14px;margin:20px 0}
   .pedido-financeiro .secao-titulo{margin-bottom:14px}
   .pedido-financeiro h4{margin:0;font-size:1.05rem}
@@ -411,6 +412,10 @@
     table.grid.responsive td.acoes-celula:empty{display:none}
     table.grid.responsive td.vazia{grid-column:1/-1;padding:18px 0;text-align:center}
     table.grid.responsive td input{width:100%!important}
+  }
+  /* A data por extenso do iPhone precisa de mais espaço que uma meia coluna. */
+  @container janela (max-width:600px){
+    .modal .formgrid:has(input[type=date]){grid-template-columns:minmax(0,1fr)}
   }
   @container janela (max-width:360px){
     .modal .formgrid{grid-template-columns:minmax(0,1fr)}
@@ -1001,7 +1006,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.13-07';
+const APP_VERSAO='2026.10.13-08';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_espera:'Em espera',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_espera:'em_producao',em_producao:'pronto',pronto:'entregue'};

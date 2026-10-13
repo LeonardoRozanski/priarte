@@ -126,6 +126,18 @@ def main():
                                 page.screenshot(path=str(output/f'antes-{name}-{width}.png'))
                         elif '--audit' not in sys.argv:
                             keyboard.check_visible(page,focused=False)
+                        # As datas localizadas do iOS precisam de uma linha inteira em janelas estreitas.
+                        # O WebKit do Playwright não reproduz o texto nativo longo do iPhone.
+                        for date in page.locator('.modal input[type=date]').all():
+                            box=date.bounding_box()
+                            field=date.locator('..').bounding_box()
+                            grid=date.locator('xpath=ancestor::div[contains(concat(" ",normalize-space(@class)," ")," formgrid ")][1]').bounding_box()
+                            modal=page.locator('#modal').bounding_box()
+                            assert box['height']==44, (name,width,box)
+                            assert box['x']>=field['x'] and box['x']+box['width']<=field['x']+field['width']+1, (name,width,box,field)
+                            if modal['width']<=600:
+                                assert abs(box['width']-grid['width'])<1, (name,width,box,grid)
+                            assert date.input_value(), (name,width)
                         if name=='ver-pedido':
                             date=page.get_by_label('Prazo de entrega',exact=True)
                             status=page.get_by_label('Status do pedido',exact=True)
@@ -138,7 +150,7 @@ def main():
                         bottom=page.evaluate(MEASURE)
                         if bottom['wrappers']:
                             failures.append({'modal':name,'width':width,'bottom':True,**bottom})
-                        if '--audit' not in sys.argv and width in {390,1366} and theme=='claro' and name in {'historico','ficha-produto','ver-pedido'}:
+                        if '--audit' not in sys.argv and width in {390,1366} and theme=='claro' and name in {'historico','ficha-produto','ver-pedido','pedido','orcamento','compra'}:
                             page.locator('.modal-conteudo').evaluate('e=>e.scrollTop=0')
                             page.screenshot(path=str(output/f'depois-{name}-{width}.png'))
                         page.evaluate("() => {while(document.querySelector('#overlay').classList.contains('aberto'))fecharModal()}")
