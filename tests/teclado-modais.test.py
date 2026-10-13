@@ -174,7 +174,7 @@ def main():
                 "abrirFormDoc('pedido')", "abrirSync()"]
             for command in dialogs:
                 page.evaluate(command)
-                inputs = page.locator('.modal-conteudo input:not([type=hidden]):not([type=file]):not([type=checkbox]), .modal-conteudo textarea')
+                inputs = page.locator('.modal-conteudo input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([readonly]), .modal-conteudo textarea')
                 inputs.last.focus()
                 area(page, {'height':350,'offsetTop':200})
                 check_visible(page)

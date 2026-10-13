@@ -908,7 +908,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.13-02';
+const APP_VERSAO='2026.10.13-03';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_espera:'Em espera',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_espera:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1022,17 +1022,31 @@ function fmtQtd(v){return parseNum(v).toLocaleString('pt-BR',{maximumFractionDig
 const UNIDADES_MATERIAL=[['Folhas','Folhas','folha'],['Unidades','Unidades','un.'],['Metros(m)','Metros (m)','m'],['Centímetros(cm)','Centímetros (cm)','cm'],['Gramas(g)','Gramas (g)','g']];
 function unidadeNome(unidade){return UNIDADES_MATERIAL.find(u=>u[0]===unidade)?.[1]||unidade;}
 function unidadeCurta(unidade){return UNIDADES_MATERIAL.find(u=>u[0]===unidade)?.[2]||unidade;}
+function calcularCompraMaterial(dados,{arredondarTotal=false}={}){
+  const quantidadePacote=converterNumero(dados.quantidadePacote),pacotes=converterNumero(dados.pacotes??1);
+  const precoPacote=converterNumero(dados.precoPacote),freteInformado=converterNumero(dados.frete??0),numItens=converterNumero(dados.numItens??1);
+  if(![quantidadePacote,pacotes,precoPacote,freteInformado,numItens].every(Number.isFinite)||quantidadePacote<=0||pacotes<=0||precoPacote<0||freteInformado<0||numItens<1||!Number.isInteger(numItens))return null;
+  const quantidade=quantidadePacote*pacotes,preco=arredondarTotal?arredondarValor(precoPacote*pacotes):precoPacote*pacotes;
+  const frete=arredondarTotal?arredondarValor(freteInformado):freteInformado,freteRateado=frete/numItens,total=preco+freteRateado;
+  if(![quantidade,preco,total].every(Number.isFinite)||quantidade<=0)return null;
+  const valorUnitario=total/quantidade;if(!Number.isFinite(valorUnitario))return null;
+  return {quantidadePacote,pacotes,precoPacote,frete,numItens,quantidade,preco,freteRateado,total,valorUnitario};
+}
+function referenciaCompraMaterial(m){
+  return m.compraReferencia?{...m.compraReferencia}:{quantidadePacote:1,pacotes:1,precoPacote:parseNum(m.custoUnitario),frete:0,numItens:1};
+}
+function custoReferenciaMaterial(m){return calcularCompraMaterial(m.compraReferencia||{})?.valorUnitario??parseNum(m.custoUnitario);}
 /* custo unitário do material = custo médio ponderado dos lotes em estoque;
    sem estoque, usa o último lote conhecido (para a precificação não quebrar) */
 function custoUnit(m){
-  if(m.controlaEstoque===false)return parseNum(m.custoUnitario);
+  if(m.controlaEstoque===false)return custoReferenciaMaterial(m);
   const lotes=db.lotes.filter(l=>l.materialId===m.id&&parseNum(l.qtdRestante)>0);
   const qtd=lotes.reduce((s,l)=>s+parseNum(l.qtdRestante),0);
   if(qtd>0)return lotes.reduce((s,l)=>s+parseNum(l.qtdRestante)*parseNum(l.valorUnitario),0)/qtd;
   const ult=db.lotes.map((l,indice)=>({l,indice})).filter(x=>x.l.materialId===m.id)
     .sort((a,b)=>(b.l.data||'').localeCompare(a.l.data||'')||(b.l.criadoEm||'').localeCompare(a.l.criadoEm||'')||b.indice-a.indice)[0]?.l;
   if(ult)return parseNum(ult.valorUnitario);
-  return parseNum(m.custoUnitario);
+  return custoReferenciaMaterial(m);
 }
 function valorEmEstoque(m){return arredondarValor(parseNum(m.estoqueAtual)*custoUnit(m));}
 function statusEstoque(m){
@@ -1658,6 +1672,7 @@ function fichaMaterial(id){
       <div><span class="muted">Disponível</span><strong>${ctrl?fmtQtd(m.estoqueAtual||0)+' '+esc(m.unidade):'Sem estoque físico'}</strong></div>
     </div>
     <div class="resumo-linha"><span>Fornecedor</span><span>${esc(m.fornecedor||'Não informado')}</span></div>
+    ${m.compraReferencia?`<details><summary>Pacote e frete de referência</summary><div class="resumo-linha"><span>Quantidade por pacote</span><span>${fmtQtd(m.compraReferencia.quantidadePacote)} ${esc(unidadeCurta(m.unidade))}</span></div><div class="resumo-linha"><span>Valor por pacote</span><span>${fmtCustoUnit(m.compraReferencia.precoPacote)}</span></div><div class="resumo-linha"><span>Frete da compra</span><span>${fmtBRL(m.compraReferencia.frete)}</span></div><div class="resumo-linha"><span>Rateio do frete</span><span>${fmtQtd(m.compraReferencia.numItens)} ${parseNum(m.compraReferencia.numItens)===1?'material':'materiais'}</span></div></details>`:''}
     ${ctrl?`<div class="resumo-linha"><span>Estoque mínimo</span><span>${fmtQtd(m.estoqueMinimo||0)} ${esc(m.unidade)}</span></div>
     <div class="resumo-linha"><span>Valor em estoque</span><span>${fmtBRL(valorEmEstoque(m))}</span></div>`:''}
     <section class="form-secao"><h4>Usado em ${produtos.length} ${produtos.length===1?'produto':'produtos'}</h4>
@@ -1666,6 +1681,36 @@ function fichaMaterial(id){
     <div class="acoes"><button class="btn" onclick="abrirFormMaterial('${id}')">Editar material</button>
       ${ctrl?`<button class="btn sec" onclick="abrirCompra('${id}')">+ Compra</button>`:''}
       <button class="btn neutro" onclick="abrirLotes('${id}')">Histórico de compras</button></div>`);
+}
+function camposCompraMaterial(referencia={}){
+  const numero=v=>v==null?'':parseNum(v).toLocaleString('pt-BR',{maximumFractionDigits:12,useGrouping:false});
+  return `<div class="formgrid">
+    <div class="campo"><label>Quantidade por pacote / compra</label><input name="quantidade" inputmode="decimal" required value="${numero(referencia.quantidadePacote)}" placeholder="Ex.: 800 folhas"></div>
+    <div class="campo"><label>Número de pacotes</label><input name="pacotes" inputmode="decimal" value="${numero(referencia.pacotes??1)}" required></div>
+    <div class="campo"><label>Valor por pacote (R$)</label><input name="preco" inputmode="decimal" value="${numero(referencia.precoPacote??0)}"></div>
+    <div class="campo"><label>Frete da compra (R$)</label><input name="frete" inputmode="decimal" value="${numero(referencia.frete??0)}"></div>
+    <div class="campo"><label>Dividir o frete entre</label><input name="numItens" inputmode="numeric" value="${numero(referencia.numItens??1)}"><small>Materiais na mesma compra. Use 1 para aplicar o frete inteiro.</small></div>
+    <div class="campo"><label data-label-custo-unitario>Custo por unidade (R$)</label><input name="custoUnitario" inputmode="decimal" readonly tabindex="-1" aria-readonly="true"><small>Calculado automaticamente com o frete rateado.</small></div>
+  </div><div class="resumo-produto" id="previewCompraMaterial" aria-live="polite"></div>`;
+}
+function dadosCompraMaterial(f){
+  return {quantidadePacote:f.quantidade.value,pacotes:f.pacotes.value,precoPacote:f.preco.value,frete:f.frete.value,numItens:f.numItens.value};
+}
+function validarCompraMaterial(f){
+  return validarNumeroCampo(f.quantidade,{positivo:true})&&validarNumeroCampo(f.pacotes,{positivo:true})&&[f.preco,f.frete].every(c=>validarNumeroCampo(c))&&validarNumeroCampo(f.numItens,{minimo:1,inteiro:true});
+}
+function atualizarCalculoCompraMaterial(){
+  const f=$('#modal form');if(!f?.custoUnitario)return;
+  const compra=calcularCompraMaterial(dadosCompraMaterial(f),{arredondarTotal:f.dataset.compraMaterial==='1'}),un=f.unidade?.value||f.dataset.unidade||'Unidades';
+  const label=f.querySelector('[data-label-custo-unitario]');if(label)label.textContent='Custo por '+unidadeCurta(un)+' (R$)';
+  f.custoUnitario.value=compra?compra.valorUnitario.toLocaleString('pt-BR',{maximumFractionDigits:12,useGrouping:false}):'';
+  $('#previewCompraMaterial').innerHTML=`<div class="resumo-linha"><span>Quantidade total</span><span>${compra?fmtQtd(compra.quantidade)+' '+esc(unidadeCurta(un)):'—'}</span></div>
+    <div class="resumo-linha"><span>Frete deste material</span><span>${compra?fmtCustoUnit(compra.freteRateado):'—'}</span></div>
+    <div class="resumo-linha"><span>Total com frete rateado</span><span>${compra?fmtBRL(compra.total):'—'}</span></div>
+    <div class="resumo-linha total"><span>Custo por ${esc(unidadeCurta(un))}</span><span data-custo-calculado>${compra?fmtCustoUnit(compra.valorUnitario):'—'}</span></div>`;
+}
+function conectarCalculoCompraMaterial(){
+  const f=$('#modal form');f.addEventListener('input',atualizarCalculoCompraMaterial);f.addEventListener('change',atualizarCalculoCompraMaterial);atualizarCalculoCompraMaterial();
 }
 function abrirFormMaterial(id,opcoes={}){
   const m=id?materialById(id):{nome:opcoes.nomeInicial||'',fornecedor:'',unidade:'Folhas',controlaEstoque:true,custoUnitario:0,estoqueMinimo:0};
@@ -1680,19 +1725,23 @@ function abrirFormMaterial(id,opcoes={}){
         ${UNIDADES_MATERIAL.some(u=>u[0]===m.unidade)?'':`<option value="${esc(m.unidade)}" selected>${esc(m.unidade)}</option>`}
       </select></div>
       <div class="campo"><label>Estoque mínimo</label><input name="estoqueMinimo" inputmode="decimal" value="${m.estoqueMinimo||0}"><small>Alerta de reposição ao atingir esta quantidade.</small></div>
-      <div class="campo"><label>Custo de referência (R$ / unidade)</label><input name="custoUnitario" inputmode="decimal" value="${m.custoUnitario||0}"><small>Usado para materiais sem estoque físico ou sem histórico de compras.</small></div>
       <div class="campo largo"><label style="flex-direction:row;display:flex;align-items:center;gap:8px"><input type="checkbox" name="controlaEstoque" ${m.controlaEstoque!==false?'checked':''} style="width:auto"> Controlar estoque deste material</label></div>
     </div>
+    <section class="form-secao"><div class="secao-titulo"><h4>Pacote e custo do material</h4></div>${camposCompraMaterial(referenciaCompraMaterial(m))}</section>
+    ${id&&db.lotes.some(l=>l.materialId===id)?`<p class="muted">Custo atual pelas compras registradas: ${fmtCustoUnit(custoUnit(m))} / ${esc(unidadeCurta(m.unidade))}.</p>`:''}
     <p class="muted">Serviços, como impressão, podem ser cadastrados sem estoque físico.</p>
     <div class="acoes"><button class="btn" type="submit">Salvar material</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
   </form>`,{empilhar:!!opcoes.empilhar});
+  conectarCalculoCompraMaterial();
   if(opcoes.aoSalvar)$('#modal form').onsubmit=ev=>salvarMaterial(ev,id,opcoes.aoSalvar);
 }
 function salvarMaterial(ev,id,aoSalvar){
   ev.preventDefault();const f=ev.target;
-  if(![f.estoqueMinimo,f.custoUnitario].every(campo=>validarNumeroCampo(campo)))return false;
+  if(!validarNumeroCampo(f.estoqueMinimo)||!validarCompraMaterial(f))return false;
+  const compra=calcularCompraMaterial(dadosCompraMaterial(f));if(!compra)return false;
   const dados={nome:f.nome.value.trim(),fornecedor:f.fornecedor.value.trim(),unidade:f.unidade.value.trim()||'Unidades',
-    estoqueMinimo:parseNum(f.estoqueMinimo.value),custoUnitario:parseNum(f.custoUnitario.value),
+    estoqueMinimo:parseNum(f.estoqueMinimo.value),custoUnitario:compra.valorUnitario,
+    compraReferencia:{quantidadePacote:compra.quantidadePacote,pacotes:compra.pacotes,precoPacote:compra.precoPacote,frete:compra.frete,numItens:compra.numItens},
     controlaEstoque:!!f.controlaEstoque.checked};
   if(!dados.nome){f.nome.value='';f.nome.reportValidity();return false;}
   let material;
@@ -1700,7 +1749,7 @@ function salvarMaterial(ev,id,aoSalvar){
   else{material=Object.assign({id:uid('m'),estoqueAtual:0},dados);db.materiais.push(material);}
   saveDB();fecharModal();render();
   if(aoSalvar)aoSalvar(material);
-  toast(aoSalvar?'Material cadastrado e adicionado ao produto.':'Material salvo.');return false;
+  toast(aoSalvar?'Material cadastrado e vinculado.':'Material salvo.');return false;
 }
 function excluirMaterial(id){
   const usado=db.produtos.filter(p=>(p.itens||[]).some(i=>i.materialId===id));
@@ -1713,32 +1762,31 @@ function excluirMaterial(id){
 /* --- compras (lotes) --- */
 function abrirCompra(id){
   const m=materialById(id);if(!m)return;
+  const referencia=m.compraReferencia?referenciaCompraMaterial(m):{};
   abrirModal(`<h3>Nova compra — ${esc(m.nome)}</h3>
-  <form onsubmit="return salvarCompra(event,'${id}')">
+  <form data-compra-material="1" data-unidade="${esc(m.unidade)}" onsubmit="return salvarCompra(event,'${id}')">
     <div class="formgrid">
       <div class="campo"><label>Data</label><input name="data" type="date" value="${hojeISO()}"></div>
-      <div class="campo"><label>Quantidade (${esc(m.unidade)})</label><input name="quantidade" inputmode="decimal" required placeholder="ex.: 100"></div>
-      <div class="campo"><label>Valor dos materiais (R$)</label><input name="preco" inputmode="decimal" value="0"><small>Total desta compra, sem frete.</small></div>
-      <div class="campo"><label>Frete da compra (R$)</label><input name="frete" inputmode="decimal" value="0"></div>
-      <div class="campo"><label>Dividir o frete entre</label><input name="numItens" inputmode="numeric" value="1"><small>Tipos de material na mesma compra. Use 1 se não dividir.</small></div>
       <div class="campo"><label>Fornecedor</label><input name="fornecedor" value="${esc(m.fornecedor||'')}"></div>
       <div class="campo largo"><label>Observações</label><input name="obs" placeholder="ex.: promoção, nº da nota..."></div>
     </div>
+    ${camposCompraMaterial(referencia)}
     <p class="muted">Disponível hoje: <strong>${fmtQtd(m.estoqueAtual||0)} ${esc(m.unidade)}</strong></p>
     <div class="acoes"><button class="btn" type="submit">Registrar compra</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
   </form>`);
+  conectarCalculoCompraMaterial();
 }
 function salvarCompra(ev,id){
   ev.preventDefault();const f=ev.target;const m=materialById(id);
-  if(!validarNumeroCampo(f.quantidade,{positivo:true})||![f.preco,f.frete].every(campo=>validarNumeroCampo(campo))||!validarNumeroCampo(f.numItens,{minimo:1,inteiro:true}))return false;
-  const qtd=parseNum(f.quantidade.value);
-  if(qtd<=0){alert('Informe a quantidade.');return false;}
-  const preco=arredondarValor(f.preco.value),frete=arredondarValor(f.frete.value),nI=parseNum(f.numItens.value);
-  const vu=(preco+frete/nI)/qtd;
+  if(!validarCompraMaterial(f))return false;
+  const compra=calcularCompraMaterial(dadosCompraMaterial(f),{arredondarTotal:true});if(!compra)return false;
+  const {quantidade:qtd,preco,frete,numItens:nI,valorUnitario:vu}=compra;
   db.lotes.push({id:uid('l'),materialId:id,data:f.data.value||hojeISO(),quantidade:qtd,qtdRestante:qtd,
-    preco,frete,numItens:nI,valorUnitario:vu,fornecedor:f.fornecedor.value.trim(),obs:f.obs.value.trim(),
+    preco,frete,numItens:nI,quantidadePacote:compra.quantidadePacote,pacotes:compra.pacotes,precoPacote:compra.precoPacote,valorUnitario:vu,fornecedor:f.fornecedor.value.trim(),obs:f.obs.value.trim(),
     criadoEm:new Date().toISOString()});
   m.estoqueAtual=Math.round(((m.estoqueAtual||0)+qtd)*10000)/10000;
+  m.custoUnitario=vu;
+  m.compraReferencia={quantidadePacote:compra.quantidadePacote,pacotes:compra.pacotes,precoPacote:compra.precoPacote,frete,numItens:nI};
   const forn=f.fornecedor.value.trim();if(forn)m.fornecedor=forn;
   saveDB();fecharModal();render();
   toast(`Compra registrada: +${fmtQtd(qtd)} ${m.unidade} (${fmtCustoUnit(vu)}/un).`);return false;
@@ -1765,18 +1813,20 @@ function salvarAjuste(ev,id){
 function abrirLotes(id){
   const m=materialById(id);if(!m)return;
   const lotes=db.lotes.filter(l=>l.materialId===id).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const mostrarFornecedor=lotes.some(l=>l.fornecedor),mostrarObs=lotes.some(l=>l.obs);
   const linhas=lotes.length?lotes.map(l=>{
-    const totalPago=(l.preco||0)+(l.frete||0)/(l.numItens||1);
+    const freteRateado=parseNum(l.frete)/(parseNum(l.numItens)||1);
     return `<tr>
-      <td>${fmtData(l.data)}</td>
-      <td class="num">${fmtQtd(l.quantidade)}</td>
+      <td style="white-space:nowrap">${fmtData(l.data)}</td>
+      <td class="num">${fmtQtd(l.quantidade)}${l.quantidadePacote?`<div class="muted">${fmtQtd(l.pacotes||1)} × ${fmtQtd(l.quantidadePacote)} ${esc(unidadeCurta(m.unidade))}</div>`:''}</td>
       <td class="num"><strong>${fmtQtd(l.qtdRestante)}</strong></td>
-      <td class="num">${fmtBRL(totalPago)}</td>
+      <td class="num">${fmtBRL(l.preco)}</td>
+      <td class="num">${fmtCustoUnit(freteRateado)}</td>
       <td class="num">${fmtCustoUnit(l.valorUnitario)}</td>
-      <td class="muted">${esc(l.fornecedor||'')}</td>
-      <td class="muted">${esc(l.obs||'')}</td>
+      ${mostrarFornecedor?`<td class="muted">${esc(l.fornecedor||'')}</td>`:''}
+      ${mostrarObs?`<td class="muted">${esc(l.obs||'')}</td>`:''}
       <td class="num">${l.qtdRestante>=l.quantidade-0.00001?`<button class="btn mini perigo" onclick="excluirLote('${l.id}','${id}')" aria-label="Excluir compra de ${fmtData(l.data)}">${ICONE_LIXEIRA}</button>`:''}</td></tr>`;
-  }).join(''):'<tr><td colspan="8" class="muted">Nenhum lote registrado.</td></tr>';
+  }).join(''):`<tr><td colspan="${7+Number(mostrarFornecedor)+Number(mostrarObs)}" class="muted">Nenhum lote registrado.</td></tr>`;
   const ctrl=m.controlaEstoque!==false;
   abrirModal(`<h3>Histórico de compras · ${esc(m.nome)}</h3>
     <p>${ctrl?`Estoque atual: <strong>${fmtQtd(m.estoqueAtual||0)} ${esc(m.unidade)}</strong> · Custo médio: <strong>${fmtCustoUnit(custoUnit(m))}</strong>`:'Material sem controle de estoque.'}</p>
@@ -1785,7 +1835,7 @@ function abrirLotes(id){
       <div class="resumo-linha"><span>Estoque mínimo</span><span>${fmtQtd(m.estoqueMinimo||0)} ${esc(m.unidade)}</span></div>
       ${ctrl?`<div class="resumo-linha"><span>Valor em estoque</span><span>${fmtBRL(valorEmEstoque(m))}</span></div>`:''}
     </details>
-    <table class="grid"><thead><tr><th>Data</th><th class="num">Quantidade comprada</th><th class="num">Disponível</th><th class="num">Total com frete</th><th class="num">Custo por unidade</th><th>Fornecedor</th><th>Observações</th><th></th></tr></thead>
+    <table class="grid"><thead><tr><th>Data</th><th class="num">Quantidade comprada</th><th class="num">Disponível</th><th class="num">Valor dos pacotes</th><th class="num">Frete rateado</th><th class="num">Custo por unidade</th>${mostrarFornecedor?'<th>Fornecedor</th>':''}${mostrarObs?'<th>Observações</th>':''}<th></th></tr></thead>
     <tbody>${linhas}</tbody></table>
     <div class="acoes">${ctrl?`<button class="btn" onclick="fecharModal();abrirCompra('${id}')">+ Nova compra</button>`:''}<button class="btn neutro" onclick="fecharModal()">Fechar</button></div>`);
 }

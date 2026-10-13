@@ -76,7 +76,7 @@ def main():
 
             page.evaluate("db.materiais.push({id:'m-compra',nome:'Material fictício de compra',unidade:'Unidades',controlaEstoque:true,custoUnitario:0,estoqueAtual:0,estoqueMinimo:0,fornecedor:''});abrirCompra('m-compra')")
             page.locator('#modal [name=quantidade]').fill('3')
-            page.get_by_label('Valor dos materiais (R$)', exact=True).fill('R$ 1,00')
+            page.get_by_label('Valor por pacote (R$)', exact=True).fill('R$ 1,00')
             page.get_by_label('Frete da compra (R$)', exact=True).fill('1,00')
             share = page.get_by_label('Dividir o frete entre', exact=True)
             share.fill('0')

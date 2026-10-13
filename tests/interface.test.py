@@ -115,7 +115,7 @@ def main():
             page.get_by_role('button', name='+ Novo material', exact=True).click()
             page.get_by_label('Fornecedor padrão', exact=True).fill('Fornecedor fictício novo')
             page.get_by_label('Unidade', exact=True).select_option('Centímetros(cm)')
-            page.get_by_label('Custo de referência (R$ / unidade)', exact=True).fill('0,40')
+            page.get_by_label('Valor por pacote (R$)', exact=True).fill('0,40')
             capture(page, 'novo-material-no-produto')
             page.get_by_role('button', name='Salvar material', exact=True).click()
             expect(page.locator('#modal h3')).to_have_text('Novo produto')
