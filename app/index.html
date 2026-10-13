@@ -83,6 +83,7 @@
   .b-pronto{--bc:var(--teal)}
   .b-cancelado,.b-zerado{--bc:var(--red)}
   .neg{color:var(--red);font-weight:700}
+  .pos{color:var(--green)}
   .painel{background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
   .duas-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:800px){.duas-col{grid-template-columns:1fr}}
@@ -246,7 +247,7 @@
   .pedido-financeiro{padding:18px;background:var(--input);border:1px solid var(--line);border-radius:14px;margin:20px 0}
   .pedido-financeiro .secao-titulo{margin-bottom:14px}
   .pedido-financeiro h4{margin:0;font-size:1.05rem}
-  .financeiro-metricas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .financeiro-metricas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .financeiro-metrica{display:grid;align-content:start;gap:6px;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:0}
   .financeiro-metrica>span{font-size:.8rem;color:var(--muted)}
   .financeiro-metrica>strong{font-size:clamp(1.1rem,2.5vw,1.65rem);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-height:1.25}
@@ -254,6 +255,17 @@
   .financeiro-resultado>strong{color:var(--green)}
   .financeiro-resultado.prejuizo{background:color-mix(in srgb,var(--red) 9%,var(--panel));border-color:color-mix(in srgb,var(--red) 40%,var(--line))}
   .financeiro-resultado.prejuizo>strong{color:var(--red)}
+  .financeiro-resultado.parcial{background:color-mix(in srgb,var(--amber) 9%,var(--panel));border-color:color-mix(in srgb,var(--amber) 40%,var(--line))}
+  .financeiro-resultado.parcial>strong{color:var(--amber)}
+  .financeiro-resultado.equilibrio{background:var(--panel);border-color:var(--line)}
+  .financeiro-resultado.equilibrio>strong{color:var(--ink)}
+  .financeiro-comparacao{display:grid;grid-template-columns:minmax(0,1fr) 150px minmax(0,1fr);gap:10px;margin-top:12px}
+  .financeiro-comparacao>.financeiro-resultado{grid-row:1/5;grid-template-rows:subgrid}
+  .financeiro-comparacao>.financeiro-resultado:first-child{grid-column:1}
+  .financeiro-comparacao>.financeiro-resultado:last-child{grid-column:3}
+  .financeiro-comparacao small{font-size:.75rem;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
+  .financeiro-trabalho{grid-column:2;grid-row:1/5;align-content:center;text-align:center}
+  .financeiro-trabalho>strong{font-size:1.2rem}
   .financeiro-composicao{margin-top:18px}
   .financeiro-composicao>p{font-size:.8rem;color:var(--muted);margin:0 0 10px}
   .financeiro-trilho{height:12px;background:var(--line);border-radius:999px;overflow:hidden;display:flex}
@@ -273,8 +285,12 @@
   @media(max-width:760px){
     .pedido-financeiro{padding:16px 12px}
     .financeiro-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .financeiro-resultado{grid-column:1/-1}
-    .financeiro-resultado>strong{font-size:1.7rem}
+    .financeiro-comparacao{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .financeiro-comparacao>.financeiro-resultado:first-child{grid-column:1;grid-row:1/5}
+    .financeiro-comparacao>.financeiro-resultado:last-child{grid-column:2;grid-row:1/5}
+    .financeiro-trabalho{grid-column:1/-1;grid-row:5;grid-template-columns:minmax(0,1fr) auto;align-items:center;text-align:left}
+    .financeiro-trabalho>small{grid-column:1/-1}
+    .financeiro-resultado>strong{font-size:1.5rem}
     .financeiro-gasto{grid-template-columns:minmax(0,1fr) 100px 44px;gap:8px}
   }
   .ficha-metricas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
@@ -398,7 +414,12 @@
     .material-busca .btn{width:100%}
     .material-escolha-custo{max-width:42%;white-space:normal}
     .financeiro-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .financeiro-resultado{grid-column:1/-1}
+    .financeiro-comparacao{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .financeiro-comparacao>.financeiro-resultado:first-child{grid-column:1;grid-row:1/5}
+    .financeiro-comparacao>.financeiro-resultado:last-child{grid-column:2;grid-row:1/5}
+    .financeiro-resultado>strong{font-size:1.5rem}
+    .financeiro-trabalho{grid-column:1/-1;grid-row:5;grid-template-columns:minmax(0,1fr) auto;align-items:center;text-align:left}
+    .financeiro-trabalho>small{grid-column:1/-1}
     .financeiro-gasto{grid-template-columns:minmax(0,1fr) 100px 44px;gap:8px}
     table.grid.responsive,table.grid.responsive tbody{display:block;background:none;border:0;overflow:visible;box-shadow:none}
     table.grid.responsive thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
@@ -425,6 +446,10 @@
     .secao-titulo>.btn{max-width:100%;white-space:normal}
   }
   .pedido-resultado{display:grid;gap:4px;white-space:normal}
+  .pedido-resultados{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0;text-align:left}
+  .pedido-resultados>.pedido-resultado{grid-row:1/3;grid-template-rows:subgrid}
+  .pedido-resultados>small{grid-column:1/-1;font-size:.75rem;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
+  #view-pedidos .pedido-lucros,#view-pedidos .pedido-total{grid-column:1/-1}
   #view-pedidos .pedido-status{grid-column:1/-1}
   #view-pedidos th.num{text-align:right}
   .pedido-resultado strong{font-variant-numeric:tabular-nums}
@@ -1006,7 +1031,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.13-08';
+const APP_VERSAO='2026.10.13-09';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_espera:'Em espera',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_espera:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1363,12 +1388,15 @@ function resumoFinanceiroPedido(pedido){
     item.trabalho=trabalhos[i];item.despesasAtelie=rateios[i];item.extras=custosExtras[i];
     item.custoTotal=somarValores([item.materiais,item.trabalho,item.despesasAtelie,item.extras]);
     item.lucro=somarValores([item.venda,-item.custoTotal]);
+    item.custoSemTrabalho=somarValores([item.materiais,item.despesasAtelie,item.extras]);
+    item.lucroSemTrabalho=somarValores([item.venda,-item.custoSemTrabalho]);
   });
   const valorPedido=totalDocumento(pedido),venda=cancelado?0:valorPedido,custoMateriais=somarValores(materiais.map(m=>m.custo));
   const custoTotal=somarValores([custoMateriais,trabalho,despesasAtelie,extras]),lucro=somarValores([venda,-custoTotal]);
+  const custoSemTrabalho=somarValores([custoMateriais,despesasAtelie,extras]),lucroSemTrabalho=somarValores([venda,-custoSemTrabalho]);
   const semBaseTrabalho=financeiro.valorHoraTrabalho==null||financeiro.custoFixoHora==null;
   const estimado=!pedido.estoqueBaixado||materiais.some(m=>m.estimado)||semBaseTrabalho||itens.some(i=>!i.custosInformados);
-  return {valorPedido,venda,cancelado,materiais:custoMateriais,trabalho,despesasAtelie,extras,custoTotal,lucro,margem:venda>0?lucro/venda*100:null,
+  return {valorPedido,venda,cancelado,materiais:custoMateriais,trabalho,despesasAtelie,extras,custoTotal,lucro,custoSemTrabalho,lucroSemTrabalho,margem:venda>0?lucro/venda*100:null,margemSemTrabalho:venda>0?lucroSemTrabalho/venda*100:null,
     tempoMin,horaTrabalho,horaDespesas,itens,detalheMateriais:materiais,despesas,estimado,custosPendentes:itens.filter(i=>!i.custosInformados).length+(itens.length?0:1),
     divergenciaConsumo:materiais.some(m=>m.divergente),semBaseTrabalho};
 }
@@ -2275,6 +2303,17 @@ function renderOrcamentos(){
   $('#selFiltroOrc').setAttribute('aria-label','Filtrar orçamentos por situação');
   $('#selFiltroOrc').addEventListener('change',e=>{filtroOrc=e.target.value;render();});
 }
+function classeResultadoPedido(f,valor){return f.custosPendentes?'parcial':valor<0?'prejuizo':valor>0?'lucro':'equilibrio';}
+function descricaoResultadoPedido(f,valor=f.lucro){
+  return f.custosPendentes?'Resultado parcial · custos incompletos':f.cancelado?'Resultado do cancelamento':valor===0?(f.estimado?'Equilíbrio previsto':'Sem lucro ou prejuízo'):valor<0?(f.estimado?'Prejuízo previsto':'Prejuízo calculado'):(f.estimado?'Lucro previsto':'Lucro calculado');
+}
+function margemFinanceiraTexto(margem){return margem===null?'Sem margem com venda zerada':'Margem sobre a venda: '+margem.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';}
+function comparacaoLucroPedidoHTML(f,compacto=false,pedidoId=''){
+  const resultados=[['lucroSemTrabalho','Sem descontar o trabalho','margemSemTrabalho'],['lucro','Após descontar o trabalho','margem']];
+  if(compacto)return `<div class="pedido-resultados" data-resultado-pedido="${esc(pedidoId)}">${resultados.map(([chave,nome])=>`<div class="pedido-resultado ${classeResultadoPedido(f,f[chave])}"><small>${nome}</small><strong data-resultado="${chave}">${fmtBRL(f[chave])}</strong></div>`).join('')}<small>Horas de trabalho: ${fmtBRL(f.trabalho)}</small><small>${descricaoResultadoPedido(f)}</small></div>`;
+  const cartoes=resultados.map(([chave,nome,margem])=>`<div class="financeiro-metrica financeiro-resultado ${classeResultadoPedido(f,f[chave])}"><span>${nome}</span><strong data-financeiro="${chave}">${fmtBRL(f[chave])}</strong><small>${descricaoResultadoPedido(f,f[chave])}</small><small data-financeiro="${margem}">${margemFinanceiraTexto(f[margem])}</small></div>`);
+  return `<div class="financeiro-comparacao" role="group" aria-label="Lucro antes e depois do custo das horas de trabalho">${cartoes[0]}<div class="financeiro-metrica financeiro-trabalho"><span>Custo das horas de trabalho</span><strong data-financeiro="trabalho">${fmtBRL(f.trabalho)}</strong><small>${tempoFinanceiroPedido(f.tempoMin)} × ${fmtCustoUnit(f.horaTrabalho)}/h</small></div>${cartoes[1]}</div>`;
+}
 function renderPedidos(){
   const lista=db.pedidos.filter(p=>{
     if(filtroPed==='ativos')return p.status!=='entregue'&&p.status!=='cancelado';
@@ -2288,14 +2327,13 @@ function renderPedidos(){
     </div>
     <table class="grid"><thead><tr><th>Trabalho</th><th>Cliente</th><th>Entrega</th><th>Status</th><th class="num">Total</th><th class="num">Lucro / prejuízo</th><th></th></tr></thead>
     <tbody>${lista.length?lista.map(p=>{
-      const f=resumoFinanceiroPedido(p),classe=f.custosPendentes?'parcial':f.lucro<0?'prejuizo':f.lucro>0?'lucro':'';
-      const descricao=f.custosPendentes?'Resultado parcial · custos incompletos':f.cancelado?'Resultado do cancelamento':f.lucro===0?(f.estimado?'Equilíbrio previsto':'Sem lucro ou prejuízo'):f.lucro<0?(f.estimado?'Prejuízo previsto':'Prejuízo calculado'):(f.estimado?'Lucro previsto':'Lucro calculado');
+      const f=resumoFinanceiroPedido(p);
       return `<tr>
       <td><button class="btn mini sec" onclick="verDoc('pedido','${p.id}')">${esc(p.titulo||p.numero)}</button><div class="muted">${esc(p.numero)}</div></td>
       <td>${esc(p.cliente||'—')}</td><td class="${p.prazo&&p.prazo<hojeISO()&&PROXIMO_PED[p.status]?'neg':''}">${p.prazo?fmtData(p.prazo):'<span class="muted">Sem prazo</span>'}</td>
       <td class="pedido-status"><span class="badge b-${p.status}">${STATUS_PED[p.status]}</span></td>
-      <td class="num"><strong>${fmtBRL(totalDocumento(p))}</strong></td>
-      <td class="num"><div class="pedido-resultado ${classe}" data-resultado-pedido="${esc(p.id)}"><strong>${fmtBRL(f.lucro)}</strong><small>${descricao}</small></div></td>
+      <td class="num pedido-total"><strong>${fmtBRL(totalDocumento(p))}</strong></td>
+      <td class="num pedido-lucros">${comparacaoLucroPedidoHTML(f,true,p.id)}</td>
       <td class="num">${PROXIMO_PED[p.status]?`<button class="btn mini sec" onclick="avancarPedido('${p.id}')">→ ${STATUS_PED[PROXIMO_PED[p.status]]}</button>`:''}
       <button class="btn mini neutro" onclick="verDoc('pedido','${p.id}')">Ver pedido</button></td></tr>`;}).join(''):'<tr><td colspan="7" class="muted">Nenhum pedido nesta seleção.</td></tr>'}</tbody></table>`;
   $('#selFiltroPed').setAttribute('aria-label','Filtrar pedidos por situação');
@@ -2584,7 +2622,6 @@ function tempoFinanceiroPedido(minutos){
 }
 function financeiroPedidoHTML(pedido,f=resumoFinanceiroPedido(pedido)){
   const partes=[['materiais','Materiais','accent'],['trabalho','Trabalho','blue'],['despesasAtelie','Despesas do ateliê','teal'],['extras','Gastos extras','amber']];
-  const resultado=f.cancelado?'Resultado do cancelamento':f.custosPendentes?'Resultado parcial':f.lucro<0?(f.estimado?'Prejuízo estimado':'Prejuízo calculado'):(f.estimado?'Lucro previsto':'Lucro após os custos');
   const notas=[];
   if(f.cancelado)notas.push('Pedido cancelado: venda considerada como zero. Gastos registrados, produção iniciada e materiais não devolvidos continuam nos custos.');
   else notas.push(f.detalheMateriais.some(m=>m.baixado)?'Materiais pelos lotes consumidos.':'Materiais pelas quantidades e custos da receita deste pedido.');
@@ -2594,16 +2631,17 @@ function financeiroPedidoHTML(pedido,f=resumoFinanceiroPedido(pedido)){
   return `<section class="pedido-financeiro" aria-labelledby="tituloFinanceiroPedido"><div class="secao-titulo"><h4 id="tituloFinanceiroPedido">Resumo financeiro</h4><button class="btn mini sec" onclick="abrirFinanceiroPedido('${pedido.id}')">Editar custos</button></div>
     <div class="financeiro-metricas">
       <div class="financeiro-metrica"><span>${f.cancelado?'Venda considerada':'Valor do pedido'}</span><strong data-financeiro="venda">${fmtBRL(f.venda)}</strong>${f.cancelado?'<small class="muted">Valor combinado: '+fmtBRL(f.valorPedido)+'</small>':''}</div>
-      <div class="financeiro-metrica"><span>Custos totais</span><strong data-financeiro="custoTotal">${fmtBRL(f.custoTotal)}</strong></div>
-      <div class="financeiro-metrica financeiro-resultado ${f.lucro<0?'prejuizo':''}"><span>${resultado}</span><strong data-financeiro="lucro">${fmtBRL(f.lucro)}</strong><small class="muted" data-financeiro="margem">${f.margem===null?'Sem margem com venda zerada':'Margem sobre a venda: '+f.margem.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'}</small></div>
+      <div class="financeiro-metrica"><span>Custos totais</span><strong data-financeiro="custoTotal">${fmtBRL(f.custoTotal)}</strong><small class="muted">Inclui as horas de trabalho.</small></div>
     </div>
+    ${comparacaoLucroPedidoHTML(f)}
+    <p class="financeiro-nota">Materiais, despesas do ateliê e gastos extras são descontados nos dois resultados.</p>
     <details class="financeiro-detalhes"><summary>Detalhes dos custos e lucro</summary>
     <div class="financeiro-composicao"><p>Composição dos custos</p><div class="financeiro-trilho" role="img" aria-label="${esc(partes.map(([chave,nome])=>nome+': '+fmtBRL(f[chave])).join('; '))}">${partes.filter(([chave])=>f[chave]>0).map(([chave,,cor])=>`<span style="width:${f.custoTotal>0?f[chave]/f.custoTotal*100:0}%;--cor-financeiro:var(--${cor})"></span>`).join('')}</div>
-      <div class="financeiro-custos">${partes.map(([chave,nome,cor])=>`<div class="financeiro-custo" style="--cor-financeiro:var(--${cor})"><span>${nome}</span><strong data-financeiro="${chave}">${fmtBRL(f[chave])}</strong></div>`).join('')}</div>
+      <div class="financeiro-custos">${partes.map(([chave,nome,cor])=>`<div class="financeiro-custo" style="--cor-financeiro:var(--${cor})"><span>${nome}</span><strong ${chave==='trabalho'?'data-financeiro-detalhe':'data-financeiro'}="${chave}">${fmtBRL(f[chave])}</strong></div>`).join('')}</div>
     </div>
     <p class="financeiro-nota">${tempoFinanceiroPedido(f.tempoMin)} de produção · trabalho ${fmtCustoUnit(f.horaTrabalho)}/h · despesas ${fmtCustoUnit(f.horaDespesas)}/h</p>
     <details><summary>Resultado por produto</summary><div class="financeiro-produtos">${f.itens.map((item,idx)=>`<div class="financeiro-produto" data-financeiro-item="${idx}"><h5>${esc(item.nome)}</h5><span class="muted">${fmtQtd(item.qtd)} ${item.qtd===1?'unidade':'unidades'}${item.custosInformados?'':' · custos não informados'}</span>
-      ${[['venda','Venda'],['materiais','Materiais'],['trabalho','Trabalho'],['despesasAtelie','Despesas do ateliê'],['extras','Gastos extras'],['custoTotal','Custo total'],['lucro','Lucro após os custos']].map(([chave,nome])=>`<div class="resumo-linha ${chave==='lucro'?'total':''}"><span>${nome}</span><span data-item-financeiro="${chave}" ${chave==='lucro'&&item.lucro<0?'class="neg"':''}>${fmtBRL(item[chave])}</span></div>`).join('')}</div>`).join('')}</div></details>
+      ${[['venda','Venda'],['materiais','Materiais'],['trabalho','Trabalho'],['despesasAtelie','Despesas do ateliê'],['extras','Gastos extras'],['custoTotal','Custo total'],['lucroSemTrabalho','Sem descontar o trabalho'],['lucro','Após descontar o trabalho']].map(([chave,nome])=>`<div class="resumo-linha ${chave.startsWith('lucro')?'total':''}"><span>${nome}</span><span data-item-financeiro="${chave}" ${chave.startsWith('lucro')?`class="${item[chave]<0?'neg':item[chave]>0?'pos':''}"`:''}>${fmtBRL(item[chave])}</span></div>`).join('')}</div>`).join('')}</div></details>
     ${f.despesas.length?`<details><summary>Gastos extras · ${fmtBRL(f.extras)}</summary>${f.despesas.map(d=>`<div class="resumo-linha"><span>${esc(d.nome)}</span><span>${fmtBRL(d.valor)}</span></div>`).join('')}</details>`:''}
     <p class="financeiro-nota">${notas.map(esc).join(' ')}</p>
     </details>
@@ -2649,7 +2687,7 @@ function trocarTempoPedido(unidade){
 function removerGastoPedido(idx){formFinanceiroPedido.financeiro.despesas.splice(idx,1);desenharGastosPedido();previewFinanceiroPedido();}
 function previewFinanceiroPedido(){
   const pedido=db.pedidos.find(p=>p.id===formFinanceiroPedido.id),f=resumoFinanceiroPedido({...pedido,financeiro:formFinanceiroPedido.financeiro});
-  $('#previewFinanceiroPedido').innerHTML=`<div class="resumo-linha"><span>Valor do pedido</span><span>${fmtBRL(f.venda)}</span></div><div class="resumo-linha"><span>Custos totais</span><span>${fmtBRL(f.custoTotal)}</span></div><div class="resumo-linha total"><span>${f.lucro<0?'Prejuízo':'Lucro após os custos'}</span><span ${f.lucro<0?'class="neg"':''}>${fmtBRL(f.lucro)}</span></div>`;
+  $('#previewFinanceiroPedido').innerHTML=`<div class="resumo-linha"><span>Valor do pedido</span><span>${fmtBRL(f.venda)}</span></div><div class="resumo-linha"><span>Custos totais · inclui trabalho</span><span>${fmtBRL(f.custoTotal)}</span></div>${comparacaoLucroPedidoHTML(f)}`;
 }
 async function salvarFinanceiroPedido(ev){
   ev.preventDefault();const f=ev.target;

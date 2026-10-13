@@ -98,6 +98,9 @@ def main():
             value(first,'despesasAtelie','R$\u00a00,50')
             value(first,'custoTotal','R$\u00a023,00')
             value(first,'lucro','R$\u00a042,00')
+            value(first,'lucroSemTrabalho','R$\u00a044,50')
+            expect(first.locator('.financeiro-comparacao')).to_contain_text('Sem descontar o trabalho')
+            expect(first.locator('.financeiro-comparacao')).to_contain_text('Após descontar o trabalho')
             expect(first.locator('.pedido-financeiro')).to_contain_text('Lucro previsto')
             assert first.evaluate('JSON.stringify(db)')==before
             passed.append('Resumo mostra venda, materiais, trabalho, rateio e lucro; abrir a visão não altera registros')
@@ -118,6 +121,7 @@ def main():
             value(first,'extras','R$\u00a06,50')
             value(first,'custoTotal','R$\u00a029,50')
             value(first,'lucro','R$\u00a035,50')
+            value(first,'lucroSemTrabalho','R$\u00a038,00')
             unchanged(first)
             passed.append('Gastos extras validam valores e reduzem o lucro sem alterar orçamento, preços ou catálogo')
 
@@ -126,11 +130,13 @@ def main():
             value(first,'custoTotal','R$\u00a028,50')
             value(first,'lucro','R$\u00a036,50')
             value(first,'margem','Margem sobre a venda: 56,2%')
-            expect(first.locator('.pedido-financeiro')).to_contain_text('Lucro após os custos')
+            expect(first.locator('.pedido-financeiro')).to_contain_text('Lucro calculado')
+            value(first,'lucroSemTrabalho','R$\u00a039,00')
             first.get_by_text('Detalhes dos custos e lucro',exact=True).click()
             first.get_by_text('Resultado por produto',exact=True).click()
             expect(first.locator('[data-financeiro-item="0"] [data-item-financeiro="materiais"]')).to_have_text('R$\u00a011,20')
             expect(first.locator('[data-financeiro-item="1"] [data-item-financeiro="lucro"]')).to_have_text('R$\u00a05,10')
+            expect(first.locator('[data-financeiro-item="1"] [data-item-financeiro="lucroSemTrabalho"]')).to_have_text('R$\u00a05,60')
             unchanged(first)
             passed.append('Lotes de preços diferentes dão o custo consumido; subtotais por produto fecham com o lucro do pedido')
 
@@ -147,8 +153,23 @@ def main():
             value(first,'trabalho','R$\u00a06,00')
             value(first,'despesasAtelie','R$\u00a01,50')
             value(first,'lucro','R$\u00a032,00')
+            value(first,'lucroSemTrabalho','R$\u00a038,00')
             unchanged(first)
             passed.append('Produção pode ter tempo e custos próprios do pedido; cancelar mantém a versão salva')
+
+            first.get_by_role('button',name='Editar custos',exact=True).click()
+            first.get_by_label('Tempo total de produção (min)',exact=True).fill('480')
+            preview=first.locator('#previewFinanceiroPedido')
+            expect(preview.locator('[data-financeiro="lucroSemTrabalho"]')).to_have_text('R$\u00a015,50')
+            expect(preview.locator('[data-financeiro="trabalho"]')).to_have_text('R$\u00a096,00')
+            expect(preview.locator('[data-financeiro="lucro"]')).to_have_text('-R$\u00a080,50')
+            expect(preview.locator('.financeiro-resultado.lucro')).to_have_count(1)
+            expect(preview.locator('.financeiro-resultado.prejuizo')).to_have_count(1)
+            first.get_by_role('button',name='Cancelar',exact=True).click()
+            value(first,'lucroSemTrabalho','R$\u00a038,00')
+            value(first,'lucro','R$\u00a032,00')
+            unchanged(first)
+            passed.append('Prévia compara lucro antes do trabalho com prejuízo após o trabalho; cancelar preserva os custos salvos')
 
             with first.expect_download() as download:
                 first.get_by_role('button',name='Salvar PDF',exact=True).click()
@@ -156,7 +177,7 @@ def main():
             download.value.save_as(pdf)
             text='\n'.join(p.extract_text() for p in PdfReader(pdf).pages)
             assert '65,00' in text
-            for internal in ['Resumo financeiro','Margem sobre a venda','Frete fictício reservado','Taxa fictícia reservada','32,00']:
+            for internal in ['Resumo financeiro','Margem sobre a venda','Frete fictício reservado','Taxa fictícia reservada','32,00','Sem descontar o trabalho','Após descontar o trabalho']:
                 assert internal not in text,internal
             passed.append('PDF enviado ao cliente mantém apenas os valores comerciais, sem lucro ou gastos internos')
 
@@ -168,12 +189,14 @@ def main():
             assert sync_test.fingerprint(first)==sync_test.fingerprint(second)
             second.evaluate("verDoc('pedido','ped-fin')")
             value(second,'lucro','R$\u00a032,00')
+            value(second,'lucroSemTrabalho','R$\u00a038,00')
             originals=first.evaluate('originaisFinanceiro')
             first.reload(wait_until='networkidle')
             sync_test.ready(first)
             first.evaluate('v=>{window.originaisFinanceiro=v}',originals)
             first.evaluate("verDoc('pedido','ped-fin')")
             value(first,'lucro','R$\u00a032,00')
+            value(first,'lucroSemTrabalho','R$\u00a038,00')
             unchanged(first)
             passed.append('Gastos e bases de custos chegam ao outro login e permanecem após reabrir')
 
@@ -187,8 +210,16 @@ def main():
                     first.evaluate("verDoc('pedido','ped-fin')")
                     keyboard_test.check_visible(first,focused=False)
                     assert first.evaluate("document.querySelector('.modal-conteudo').scrollWidth<=document.querySelector('.modal-conteudo').clientWidth")
+                    if width<=390:
+                        before=first.locator('[data-financeiro="lucroSemTrabalho"]').bounding_box()
+                        after=first.locator('[data-financeiro="lucro"]').bounding_box()
+                        work=first.locator('.financeiro-trabalho').bounding_box()
+                        assert abs(before['y']-after['y'])<1, (width,before,after)
+                        assert before['x']+before['width']<after['x'], (width,before,after)
+                        assert work['y']>=max(before['y']+before['height'],after['y']+after['height']), (width,work)
                     if width in {390,1366}:
                         first.locator('#toast').evaluate('e=>e.style.display="none"')
+                        first.locator('.modal-conteudo').evaluate("e=>{const section=e.querySelector('.pedido-financeiro');e.scrollTop+=section.getBoundingClientRect().top-e.getBoundingClientRect().top-parseFloat(getComputedStyle(e).paddingTop)}")
                         first.screenshot(path=str(output/f'financeiro-{theme}-{width}.png'))
                     first.get_by_role('button',name='Editar custos',exact=True).click()
                     first.get_by_label('Despesas por hora (R$)',exact=True).focus()
@@ -210,12 +241,14 @@ def main():
             first.get_by_label('Valor do gasto 1',exact=True).fill('100')
             first.get_by_role('button',name='Salvar custos',exact=True).click()
             value(first,'lucro','-R$\u00a063,00')
-            assert first.locator('.financeiro-resultado.prejuizo').count()==1
+            assert first.locator('.financeiro-resultado.prejuizo').count()==2
+            value(first,'lucroSemTrabalho','-R$\u00a057,00')
             expect(first.locator('.pedido-financeiro')).to_contain_text('Prejuízo calculado')
             first.get_by_label('Status do pedido',exact=True).select_option('cancelado')
             value(first,'venda','R$\u00a00,00')
             value(first,'materiais','R$\u00a05,00')
             value(first,'lucro','-R$\u00a0114,00')
+            value(first,'lucroSemTrabalho','-R$\u00a0108,00')
             assert first.evaluate("db.pedidos[0].total")==65
             passed.append('Prejuízo recebe destaque; cancelar zera a venda e mantém despesas, trabalho e serviços já realizados')
             assert not errors,errors

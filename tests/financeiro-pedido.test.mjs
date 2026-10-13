@@ -43,6 +43,20 @@ export async function runTests(){
     assert.deepEqual(c.get('pedido.baixas.map(b=>[b.qtd,b.custoUnitario])'),[[3,2],[2,4]]);
     assert.deepEqual(c.get('resumo().itens.map(i=>[i.materiais,i.trabalho,i.despesasAtelie,i.extras,i.custoTotal,i.lucro])'),[[11.2,2,.4,5,18.6,31.4],[7.8,.5,.1,1.5,9.9,5.1]]);
   });
+  check('Resultado sem trabalho mantém materiais, despesas e extras; a diferença é apenas o trabalho',c=>{
+    assert.deepEqual(c.get('[resumo().custoSemTrabalho,resumo().lucroSemTrabalho,resumo().trabalho,resumo().lucro]'),[27,38,2.5,35.5]);
+    assert.equal(c.get('resumo().margemSemTrabalho'),38/65*100);
+    c.run("baixarEstoque(pedido);pedido.status='em_producao'");
+    assert.deepEqual(c.get('[resumo().custoSemTrabalho,resumo().lucroSemTrabalho,resumo().trabalho,resumo().lucro]'),[26,39,2.5,36.5]);
+    assert.equal(c.get('somarValores(resumo().itens.map(i=>i.lucroSemTrabalho))'),39);
+    assert.deepEqual(c.get('resumo().itens.map(i=>[i.lucroSemTrabalho,i.trabalho,i.lucro])'),[[33.4,2,31.4],[5.6,.5,5.1]]);
+  });
+  check('Um pedido lucrativo antes do trabalho pode dar prejuízo após oito horas; preços ficam intactos',c=>{
+    c.run('pedido.financeiro.tempoMin=480;pedido.financeiro.custoFixoHora=0;var original=JSON.stringify([pedido,db])');
+    assert.deepEqual(c.get('[resumo().lucroSemTrabalho,resumo().trabalho,resumo().lucro]'),[38.5,80,-41.5]);
+    assert.equal(c.get('resumo().venda'),65);
+    assert.equal(c.get('JSON.stringify([pedido,db])===original'),true);
+  });
   check('Compras e configurações posteriores não alteram custos registrados de um pedido produzido',c=>{
     c.run(`baixarEstoque(pedido);var antes=JSON.stringify(resumo());
       db.config.salario=99999;db.config.custosFixos=[{valor:99999}];db.produtos[0].tempoMin=999;
@@ -63,6 +77,7 @@ export async function runTests(){
     assert.equal(c.get('somarValores(resumo().itens.map(i=>i.custoTotal))'),1.02);
     assert.equal(c.get('somarValores(resumo().itens.map(i=>i.lucro))'),1.98);
     assert.equal(c.get('resumo().lucro'),1.98);
+    assert.equal(c.get('somarValores(resumo().itens.map(i=>i.lucroSemTrabalho))'),c.get('resumo().lucroSemTrabalho'));
   });
   check('Receita personalizada e quantidades fracionadas entram no financeiro do pedido',c=>{
     c.run('pedido.itens[0].receita.itens[0].qtd=.0125;pedido.itens[0].qtd=2.5');
@@ -76,11 +91,14 @@ export async function runTests(){
     assert.deepEqual(c.get('[resumo().tempoMin,resumo().trabalho,resumo().despesasAtelie]'),[30,6,1.5]);
     c.run('pedido.financeiro.tempoMin=0');
     assert.deepEqual(c.get('[resumo().trabalho,resumo().despesasAtelie]'),[0,0]);
+    assert.equal(c.get('resumo().lucroSemTrabalho'),c.get('resumo().lucro'));
     assert.equal(c.get('db.config.salario'),1200);
   });
   check('Venda zerada e prejuízo não geram margem inválida; rateios continuam fechando',c=>{
     c.run('pedido.itens.forEach(i=>i.precoUnit=0)');
     assert.equal(c.get('resumo().margem'),null);
+    assert.equal(c.get('resumo().margemSemTrabalho'),null);
+    assert.equal(c.get('resumo().lucroSemTrabalho'),-27);
     assert.equal(c.get('resumo().lucro'),-29.5);
     assert.equal(c.get('somarValores(resumo().itens.map(i=>i.lucro))'),-29.5);
     assert.equal(c.get('JSON.stringify(resumo()).includes("null")'),true);
@@ -94,6 +112,7 @@ export async function runTests(){
     assert.equal(c.get('resumo().lucro'),-28.5);
     c.run('estornarEstoque(pedido)');
     assert.deepEqual(c.get('[resumo().materiais,resumo().trabalho,resumo().despesasAtelie,resumo().lucro]'),[5,2.5,.5,-14.5]);
+    assert.equal(c.get('resumo().lucroSemTrabalho'),-12);
     assert.deepEqual(c.get('db.lotes.map(l=>l.qtdRestante)'),[3,3]);
   });
   check('Lotes e materiais removidos continuam legíveis usando o custo gravado nas baixas',c=>{
