@@ -78,7 +78,7 @@
   .b-aberto,.b-em_producao{--bc:var(--blue)}
   .b-aprovado,.b-entregue,.b-ok{--bc:var(--green)}
   .b-perdido,.b-semcontrole{--bc:var(--gray)}
-  .b-pendente,.b-baixo{--bc:var(--amber)}
+  .b-pendente,.b-em_espera,.b-baixo{--bc:var(--amber)}
   .b-pronto{--bc:var(--teal)}
   .b-cancelado,.b-zerado{--bc:var(--red)}
   .neg{color:var(--red);font-weight:700}
@@ -222,6 +222,15 @@
   .material-escolha-custo{display:grid;gap:4px;text-align:right;flex-shrink:0;font-size:.9rem}
   .material-escolha .muted{font-size:.8rem}
   .resumo-produto{background:var(--input);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:20px}
+  .documento-materiais{display:grid;gap:16px;margin-top:20px}
+  .documento-material-produto{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+  .documento-material-produto .secao-titulo{margin-bottom:12px}
+  .documento-material-produto h4{margin:0;font-size:1rem;overflow-wrap:anywhere}
+  .documento-material-produto table{margin:0}
+  .documento-item-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .pedido-situacao{display:flex;gap:16px;align-items:end;flex-wrap:wrap;margin-top:20px}
+  .pedido-situacao .campo{flex:1;min-width:170px}
+  .pedido-situacao select{width:100%}
   .ficha-metricas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
   .ficha-metricas>div{display:grid;gap:5px;padding:14px;background:var(--input);border-radius:10px;min-width:0}
   details{border-top:1px solid var(--line);padding:14px 0;margin-top:14px}
@@ -865,10 +874,10 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.10-04';
+const APP_VERSAO='2026.10.13-01';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
-const STATUS_PED={pendente:'A produzir',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
-const PROXIMO_PED={pendente:'em_producao',em_producao:'pronto',pronto:'entregue'};
+const STATUS_PED={pendente:'A produzir',em_espera:'Em espera',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
+const PROXIMO_PED={pendente:'em_producao',em_espera:'em_producao',em_producao:'pronto',pronto:'entregue'};
 
 function criarDBVazio(){
   return {
@@ -1001,43 +1010,82 @@ function statusEstoque(m){
 }
 function materiaisEmAlerta(){return db.materiais.filter(m=>m.controlaEstoque!==false&&(m.estoqueAtual||0)<=(m.estoqueMinimo||0));}
 /* consolida a necessidade de materiais de uma lista de itens (pedido/orçamento) */
+function copiarReceitaProduto(p){
+  return {tempoMin:parseNum(p.tempoMin),lucroPct:parseNum(p.lucroPct),itens:(p.itens||[]).map(r=>{
+    const m=materialById(r.materialId);
+    return {materialId:r.materialId,qtd:parseNum(r.qtd),nome:m?.nome||r.nome||'Material removido',unidade:m?.unidade||r.unidade||'Unidades',custoUnitario:m?custoUnit(m):parseNum(r.custoUnitario)};
+  })};
+}
+function materiaisItemDocumento(item){return item.receita?.itens||produtoById(item.produtoId)?.itens||[];}
+function prepararItemDocumento(item){
+  const p=produtoById(item.produtoId);
+  if(!item.receita&&p)item.receita=copiarReceitaProduto(p);
+  if(item.precoManual===undefined)item.precoManual=!p||p.precoFinalManual!=null||centavos(item.precoUnit)!==centavos(precoFinal(p));
+  return item;
+}
+function precoCalculadoItemDocumento(item){return precoSugerido(item.receita||produtoById(item.produtoId)||{itens:[]});}
+function recalcularItemDocumento(item){if(!item.precoManual)item.precoUnit=precoCalculadoItemDocumento(item);}
+function assinaturaProducaoDocumento(d){
+  return JSON.stringify((d.itens||[]).map(it=>({produtoId:it.produtoId,qtd:parseNum(it.qtd),materiais:materiaisItemDocumento(it).map(r=>[r.materialId,parseNum(r.qtd)])})));
+}
+function consumoPedido(pedido){
+  const consumo={};
+  if(pedido?.estoqueBaixado)for(const b of pedido.baixas||[])consumo[b.materialId]=(consumo[b.materialId]||0)+parseNum(b.qtd);
+  return consumo;
+}
 function necessidadeMateriais(itens){
   const need={};
   for(const it of itens){
-    if(!it.produtoId)continue;
-    const p=produtoById(it.produtoId);if(!p)continue;
-    for(const r of (p.itens||[])){
+    for(const r of materiaisItemDocumento(it)){
       const m=materialById(r.materialId);if(!m||m.controlaEstoque===false)continue;
-      need[r.materialId]=(need[r.materialId]||0)+r.qtd*it.qtd;
+      need[r.materialId]=(need[r.materialId]||0)+parseNum(r.qtd)*parseNum(it.qtd);
     }
   }
   return need;
 }
-function faltasEstoque(itens){
-  const need=necessidadeMateriais(itens);
+function faltasEstoque(itens,pedido=null){
+  const need=necessidadeMateriais(itens),consumo=consumoPedido(pedido);
   return Object.keys(need).map(mid=>{const m=materialById(mid);
-    return {nome:m.nome,un:m.unidade,precisa:need[mid],tem:parseNum(m.estoqueAtual)};
+    return {nome:m.nome,un:m.unidade,precisa:need[mid],tem:parseNum(m.estoqueAtual)+(consumo[mid]||0)};
   }).filter(x=>x.precisa-x.tem>1e-8);
 }
 /* baixa FIFO: consome do lote mais antigo primeiro; guarda o rastro para estorno */
 function baixarEstoque(ped){
   const need=necessidadeMateriais(ped.itens);
   ped.baixas=[];
-  for(const mid of Object.keys(need)){
-    const m=materialById(mid);if(!m)continue;
-    let rest=need[mid];
-    const lotes=db.lotes.filter(l=>l.materialId===mid&&l.qtdRestante>0).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
-    for(const l of lotes){
-      if(rest<=0.00001)break;
-      const take=Math.min(l.qtdRestante,rest);
-      l.qtdRestante=Math.round((l.qtdRestante-take)*10000)/10000;
-      rest-=take;
-      ped.baixas.push({materialId:mid,loteId:l.id,qtd:Math.round(take*10000)/10000});
-    }
-    if(rest>0.00001)ped.baixas.push({materialId:mid,loteId:null,qtd:Math.round(rest*10000)/10000});
-    m.estoqueAtual=Math.round(((m.estoqueAtual||0)-need[mid])*10000)/10000;
-  }
+  for(const mid of Object.keys(need))baixarMaterialPedido(ped,mid,need[mid]);
   ped.estoqueBaixado=true;
+}
+function baixarMaterialPedido(ped,mid,quantidade){
+  const m=materialById(mid);if(!m)return;
+  let rest=quantidade;
+  const lotes=db.lotes.filter(l=>l.materialId===mid&&l.qtdRestante>0).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  for(const l of lotes){
+    if(rest<=0.00001)break;
+    const take=Math.min(l.qtdRestante,rest);
+    l.qtdRestante=Math.round((l.qtdRestante-take)*10000)/10000;
+    rest-=take;
+    ped.baixas.push({materialId:mid,loteId:l.id,qtd:Math.round(take*10000)/10000});
+  }
+  if(rest>0.00001)ped.baixas.push({materialId:mid,loteId:null,qtd:Math.round(rest*10000)/10000});
+  m.estoqueAtual=Math.round(((m.estoqueAtual||0)-quantidade)*10000)/10000;
+}
+function devolverMaterialPedido(ped,mid,quantidade){
+  let restante=quantidade;
+  for(let i=(ped.baixas||[]).length-1;i>=0&&restante>1e-8;i--){
+    const baixa=ped.baixas[i];if(baixa.materialId!==mid)continue;
+    const devolucao=Math.min(parseNum(baixa.qtd),restante);
+    const lote=db.lotes.find(l=>l.id===baixa.loteId);
+    if(lote)lote.qtdRestante=Math.round((parseNum(lote.qtdRestante)+devolucao)*10000)/10000;
+    const m=materialById(mid);if(m)m.estoqueAtual=Math.round((parseNum(m.estoqueAtual)+devolucao)*10000)/10000;
+    baixa.qtd=Math.round((parseNum(baixa.qtd)-devolucao)*10000)/10000;restante-=devolucao;
+  }
+  ped.baixas=(ped.baixas||[]).filter(b=>parseNum(b.qtd)>1e-8);
+}
+function ajustarEstoquePedido(ped,itens){
+  const antes=consumoPedido(ped),depois=necessidadeMateriais(itens);
+  for(const mid of Object.keys(antes))if(antes[mid]>(depois[mid]||0)+1e-8)devolverMaterialPedido(ped,mid,antes[mid]-(depois[mid]||0));
+  for(const mid of Object.keys(depois))if(depois[mid]>(antes[mid]||0)+1e-8)baixarMaterialPedido(ped,mid,depois[mid]-(antes[mid]||0));
 }
 function estornarEstoque(ped){
   for(const b of (ped.baixas||[])){
@@ -1067,9 +1115,9 @@ function custoProduto(p){
   const tempoH=parseNum(p.tempoMin)/60;
   let mat=0;const detalhe=[];
   for(const it of (p.itens||[])){
-    const m=materialById(it.materialId);if(!m)continue;
-    const vu=custoUnit(m);const vt=arredondarValor(vu*parseNum(it.qtd));mat+=centavos(vt);
-    detalhe.push({nome:m.nome,qtd:it.qtd,un:m.unidade,vu,vt});
+    const m=materialById(it.materialId);if(!m&&!it.nome)continue;
+    const vu=m?custoUnit(m):parseNum(it.custoUnitario);const vt=arredondarValor(vu*parseNum(it.qtd));mat+=centavos(vt);
+    detalhe.push({nome:it.nome||m?.nome||'Material removido',qtd:it.qtd,un:it.unidade||m?.unidade||'Unidades',vu,vt});
   }
   const materiais=mat/100;
   const maoDeObra=arredondarValor(valorHoraTrabalho()*tempoH);
@@ -1286,7 +1334,7 @@ function calcularIndicadores(periodo='6',hoje=hojeISO()){
   const noPeriodo=d=>periodo==='todos'||(dataIndicador(d)>=inicio&&dataIndicador(d)<=hoje);
   const pedidos=db.pedidos.filter(noPeriodo),orcamentos=db.orcamentos.filter(noPeriodo);
   const entregues=pedidos.filter(p=>p.status==='entregue');
-  const ativos=pedidos.filter(p=>['pendente','em_producao','pronto'].includes(p.status));
+  const ativos=pedidos.filter(p=>['pendente','em_espera','em_producao','pronto'].includes(p.status));
   const abertos=orcamentos.filter(o=>o.status==='aberto');
   const aprovados=orcamentos.filter(o=>o.status==='aprovado').length;
   const decididos=aprovados+orcamentos.filter(o=>o.status==='perdido').length;
@@ -1363,7 +1411,7 @@ function renderIndicadores(){
         ${graficoSituacoes(d.orcamentos,[['aberto','Aguardando aprovação','amber'],['aprovado','Aprovados','green'],['perdido','Não aprovados','gray']])}</div>
       <div class="painel"><div class="painel-titulo"><h3>Situação dos pedidos</h3><button class="link-acao" onclick="showView('pedidos')">Ver pedidos →</button></div>
         <p class="indicador-descricao">${d.pedidos.length} no período selecionado.</p>
-        ${graficoSituacoes(d.pedidos,[['pendente','A produzir','amber'],['em_producao','Em produção','blue'],['pronto','Prontos','teal'],['entregue','Entregues','green'],['cancelado','Cancelados','red']])}</div>
+        ${graficoSituacoes(d.pedidos,[['pendente','A produzir','amber'],['em_espera','Em espera','amber'],['em_producao','Em produção','blue'],['pronto','Prontos','teal'],['entregue','Entregues','green'],['cancelado','Cancelados','red']])}</div>
       <div class="painel"><div class="painel-titulo"><h3>Reposição de materiais</h3><button class="link-acao" onclick="abrirEstoqueMateriais()">Ver estoque →</button></div>
         <p class="indicador-descricao">Posição atual · ${d.materiaisControlados} materiais com estoque físico.</p>
         <div class="indicadores-estoque">${d.reposicao.length?d.reposicao.slice(0,5).map(m=>`<button class="trabalho" data-repor="${esc(m.id)}"><span class="trabalho-info"><span class="trabalho-nome">${esc(m.nome)}</span><span class="muted">Mínimo: ${fmtQtd(m.estoqueMinimo)} ${esc(unidadeCurta(m.unidade))}</span></span><span class="trabalho-fim"><strong class="neg">${fmtQtd(m.estoqueAtual)} ${esc(unidadeCurta(m.unidade))}</strong></span></button>`).join(''):`<div class="vazio"><strong>${d.materiaisControlados?'Estoque em dia':'Nenhum estoque físico cadastrado'}</strong>${d.materiaisControlados?'Nenhum material precisa de reposição.':'Os alertas aparecem ao cadastrar materiais com controle de estoque.'}</div>`}</div>
@@ -1383,7 +1431,7 @@ function renderIndicadores(){
 
 function renderDashboard(){
   const abertos=db.orcamentos.filter(o=>o.status==='aberto');
-  const ativos=db.pedidos.filter(p=>['pendente','em_producao','pronto'].includes(p.status));
+  const ativos=db.pedidos.filter(p=>['pendente','em_espera','em_producao','pronto'].includes(p.status));
   const hoje=hojeISO(),limite=new Date();limite.setDate(limite.getDate()+7);
   const limiteISO=limite.getFullYear()+'-'+pad2(limite.getMonth()+1)+'-'+pad2(limite.getDate());
   const entregas=ativos.filter(p=>p.prazo&&p.prazo>=hoje&&p.prazo<=limiteISO);
@@ -1874,14 +1922,15 @@ function vincularMaterialProduto(materialId,idx){
   desenharReceitaProduto();previewProduto();
   $(`#tbReceita .inpQtd[data-idx="${idx}"]`)?.focus();
 }
-function abrirBuscaMaterial(idx=null){
+function abrirBuscaMaterial(idx=null,{aoSelecionar=null,voltar='Voltar ao produto',destino='produto'}={}){
+  const vincular=materialId=>aoSelecionar?aoSelecionar(materialId,idx):vincularMaterialProduto(materialId,idx);
   abrirModal(`<h3>${idx==null?'Adicionar':'Trocar'} material</h3>
     <form onsubmit="return false">
       <div class="material-busca"><input id="buscaMaterialProduto" aria-label="Buscar material" placeholder="Buscar material ou fornecedor..." autocomplete="off">
         <button class="btn" type="button" id="novoMaterialProduto">+ Novo material</button></div>
       <p class="contagem" id="contagemMaterialProduto" aria-live="polite"></p>
       <div class="lista-materiais-escolha" id="listaMaterialProduto"></div>
-      <div class="acoes"><button class="btn neutro" type="button" onclick="fecharModal()">Voltar ao produto</button></div>
+      <div class="acoes"><button class="btn neutro" type="button" onclick="fecharModal()">${esc(voltar)}</button></div>
     </form>`,{empilhar:true});
   const busca=$('#buscaMaterialProduto'),lista=$('#listaMaterialProduto');
   function listar(){
@@ -1890,15 +1939,15 @@ function abrirBuscaMaterial(idx=null){
     $('#contagemMaterialProduto').textContent=materiais.length+' de '+db.materiais.length+' materiais';
     lista.innerHTML=materiais.map(m=>`<button type="button" class="material-escolha" data-material-id="${esc(m.id)}">
       <span class="material-escolha-info"><strong>${esc(m.nome)}</strong><span class="muted">${esc(m.fornecedor||unidadeNome(m.unidade))}</span></span>
-      <span class="material-escolha-custo"><strong>${fmtCustoUnit(custoUnit(m))}</strong><span class="muted">por ${esc(unidadeCurta(m.unidade))}</span></span></button>`).join('')||'<div class="vazio"><strong>Nenhum material encontrado</strong>Use “Novo material” para cadastrar e adicionar ao produto.</div>';
+      <span class="material-escolha-custo"><strong>${fmtCustoUnit(custoUnit(m))}</strong><span class="muted">por ${esc(unidadeCurta(m.unidade))}</span></span></button>`).join('')||`<div class="vazio"><strong>Nenhum material encontrado</strong>Use “Novo material” para cadastrar e adicionar ao ${esc(destino)}.</div>`;
   }
   lista.addEventListener('click',ev=>{
     const botao=ev.target.closest('[data-material-id]');if(!botao)return;
-    fecharModal();vincularMaterialProduto(botao.dataset.materialId,idx);
+    fecharModal();vincular(botao.dataset.materialId);
   });
   busca.addEventListener('input',listar);
   busca.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();lista.querySelector('button')?.click();}});
-  $('#novoMaterialProduto').addEventListener('click',()=>abrirFormMaterial(null,{nomeInicial:busca.value.trim(),empilhar:true,aoSalvar:m=>{fecharModal();vincularMaterialProduto(m.id,idx);}}));
+  $('#novoMaterialProduto').addEventListener('click',()=>abrirFormMaterial(null,{nomeInicial:busca.value.trim(),empilhar:true,aoSalvar:m=>{fecharModal();vincular(m.id);}}));
   listar();
 }
 function addItemReceita(){abrirBuscaMaterial();}
@@ -1955,7 +2004,7 @@ function renderPedidos(){
   }).sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999')||(b.criadoEm||'').localeCompare(a.criadoEm||''));
   $('#view-pedidos').innerHTML=`
     <div class="barra"><h2>Pedidos</h2>
-      <select id="selFiltroPed">${[['ativos','Em andamento'],['todos','Todos os pedidos'],['pendente','A produzir'],['em_producao','Em produção'],['pronto','Prontos para entrega'],['entregue','Entregues'],['cancelado','Cancelados']].map(([v,l])=>`<option value="${v}" ${v===filtroPed?'selected':''}>${l}</option>`).join('')}</select>
+      <select id="selFiltroPed">${[['ativos','Em andamento'],['todos','Todos os pedidos'],['pendente','A produzir'],['em_espera','Em espera'],['em_producao','Em produção'],['pronto','Prontos para entrega'],['entregue','Entregues'],['cancelado','Cancelados']].map(([v,l])=>`<option value="${v}" ${v===filtroPed?'selected':''}>${l}</option>`).join('')}</select>
       <div class="spacer"></div><button class="btn" onclick="abrirFormDoc('pedido')">+ Novo pedido</button>
     </div>
     <table class="grid"><thead><tr><th>Trabalho</th><th>Cliente</th><th>Entrega</th><th>Status</th><th class="num">Total</th><th></th></tr></thead>
@@ -1980,29 +2029,30 @@ function abrirFormDoc(tipo,id){
   }else{
     d={id:null,numero:null,titulo:'',data:hojeISO(),cliente:'',obs:'',prazo:'',itens:[],status:tipo==='orcamento'?'aberto':'pendente'};
   }
+  d.itens.forEach(prepararItemDocumento);
   formDoc={tipo,d};
-  desenharFormDoc();
+  desenharFormDoc({capturar:false});
 }
 function subtotalDoc(item){return arredondarValor(parseNum(item.qtd)*parseNum(item.precoUnit));}
 function totalDoc(d){return somarValores((d.itens||[]).map(subtotalDoc));}
 function totalDocumento(d){return d.itens?.length?totalDoc(d):arredondarValor(d.total);}
 function capturaCabecalhoDoc(){
   const d=formDoc.d;
-  const tit=$('#modal [name=titulo]'),cli=$('#modal [name=cliente]'),dat=$('#modal [name=data]'),obs=$('#modal [name=obs]'),prz=$('#modal [name=prazo]');
+  const tit=$('#modal [name=titulo]'),cli=$('#modal [name=cliente]'),dat=$('#modal [name=data]'),obs=$('#modal [name=obs]'),prz=$('#modal [name=prazo]'),st=$('#modal [name=statusPedido]');
   if(tit)d.titulo=tit.value;if(cli)d.cliente=cli.value;if(dat)d.data=dat.value;if(obs)d.obs=obs.value;if(prz)d.prazo=prz.value;
+  if(st)d.status=st.value;
 }
-function desenharFormDoc(){
+function desenharFormDoc({capturar=true}={}){
   const {tipo,d}=formDoc;
-  capturaCabecalhoDoc();
+  if(capturar)capturaCabecalhoDoc();
   const titulo=tipo==='orcamento'?'orçamento':'pedido';
   const prodOptions=db.produtos.map(p=>({id:p.id,rotulo:p.nome,extra:fmtBRL(precoFinal(p))}));
-  const travado=tipo==='pedido'&&d.estoqueBaixado;
   const linhas=d.itens.map((it,idx)=>`<tr>
-    <td>${esc(it.nome)}</td>
-    <td style="width:90px"><input inputmode="decimal" value="${it.qtd}" data-idx="${idx}" class="docQtd" style="width:70px" ${travado?'disabled':''}></td>
-    <td style="width:120px"><input inputmode="decimal" value="${parseNum(it.precoUnit).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:12,useGrouping:false})}" data-idx="${idx}" class="docPreco" style="width:105px" ${travado?'disabled':''}></td>
+    <td>${esc(it.nome)}<div class="documento-item-acoes"><button type="button" class="btn mini sec" onclick="abrirEdicaoItemDocumento(${idx})">Produto e materiais</button></div></td>
+    <td style="width:90px"><input inputmode="decimal" value="${fmtQtd(it.qtd)}" data-idx="${idx}" class="docQtd" aria-label="Quantidade de ${esc(it.nome)}" style="width:70px"></td>
+    <td style="width:120px"><input inputmode="decimal" value="${parseNum(it.precoUnit).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:12,useGrouping:false})}" data-idx="${idx}" class="docPreco" aria-label="Preço unitário de ${esc(it.nome)}" style="width:105px"></td>
     <td class="num" id="subDoc${idx}">${fmtBRL(subtotalDoc(it))}</td>
-    <td style="width:40px">${travado?'':`<button type="button" class="btn mini perigo" onclick="remItemDoc(${idx})" aria-label="Remover ${esc(it.nome)} do ${tipo==='orcamento'?'orçamento':'pedido'}">${ICONE_LIXEIRA}</button>`}</td></tr>`).join('');
+    <td style="width:40px"><button type="button" class="btn mini perigo" onclick="remItemDoc(${idx})" aria-label="Remover ${esc(it.nome)} do ${titulo}">${ICONE_LIXEIRA}</button></td></tr>`).join('');
   abrirModal(`<h3>${d.id?'Editar':'Novo'} ${titulo}${d.numero?' — '+esc(d.numero):''}</h3>
   <form onsubmit="return salvarDoc(event)">
     <div class="formgrid">
@@ -2010,9 +2060,12 @@ function desenharFormDoc(){
       <div class="campo"><label>Cliente</label><input name="cliente" value="${esc(d.cliente||'')}" placeholder="Nome do cliente"></div>
       <div class="campo"><label>Data</label><input name="data" type="date" value="${d.data||hojeISO()}"></div>
       ${tipo==='pedido'?`<div class="campo"><label>Prazo de entrega</label><input name="prazo" type="date" value="${d.prazo||''}"></div>`:''}
+      ${tipo==='pedido'?`<div class="campo"><label>Status do pedido</label><select name="statusPedido">${Object.entries(STATUS_PED).map(([v,n])=>`<option value="${v}" ${d.status===v?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
       <div class="campo largo"><label>Detalhes da personalização</label><input name="obs" value="${esc(d.obs||'')}" placeholder="Nome, tema, cores e outros combinados"></div>
     </div>
-    ${travado?'<p class="muted">O material deste pedido já saiu do estoque. Para mudar os itens, cancele este pedido e crie outro.</p>':`<div class="painel" style="background:color-mix(in srgb,var(--accent) 6%,var(--panel))">
+    ${tipo==='pedido'&&d.orcamentoId?'<p class="muted">Ao salvar, os itens e valores também serão atualizados no orçamento vinculado.</p>':''}
+    ${tipo==='pedido'&&d.estoqueBaixado?'<p class="muted">Os materiais já saíram do estoque. Ao salvar, será ajustada apenas a diferença.</p>':''}
+    <div class="painel" style="background:color-mix(in srgb,var(--accent) 6%,var(--panel))">
       <div class="formgrid" style="margin-bottom:6px">
         <div class="campo largo"><label>Produto do catálogo</label>
           <div class="sug-wrap" id="wrapProdDoc"></div></div>
@@ -2026,14 +2079,14 @@ function desenharFormDoc(){
           <div class="campo largo"><button type="button" class="btn neutro" onclick="addAvulsoDoc()">Adicionar item</button></div>
         </div>
       </details>
-    </div>`}
+    </div>
     <table class="grid"><thead><tr><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th class="num">Subtotal</th><th></th></tr></thead>
     <tbody id="tbDoc">${linhas||'<tr><td colspan="5" class="muted">Nenhum item ainda.</td></tr>'}</tbody></table>
     <div class="resumo-linha total"><span>Total</span><span id="totalDoc">${fmtBRL(totalDoc(d))}</span></div>
     <div class="acoes"><button class="btn" type="submit">Salvar ${titulo}</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
   </form>`);
   $$('.docQtd').forEach(inp=>inp.addEventListener('input',()=>{const i=+inp.dataset.idx;formDoc.d.itens[i].qtd=parseNum(inp.value);atualizaLinhaDoc(i);}));
-  $$('.docPreco').forEach(inp=>inp.addEventListener('input',()=>{const i=+inp.dataset.idx;formDoc.d.itens[i].precoUnit=parseNum(inp.value);atualizaLinhaDoc(i);}));
+  $$('.docPreco').forEach(inp=>inp.addEventListener('input',()=>{const i=+inp.dataset.idx;formDoc.d.itens[i].precoUnit=parseNum(inp.value);formDoc.d.itens[i].precoManual=true;atualizaLinhaDoc(i);}));
   montaSugestoes('#wrapProdDoc',prodOptions,prod=>addProdPorId(prod.id));
 }
 /* caixa de busca com lista de sugestões própria (navegável por teclado e mouse) */
@@ -2078,7 +2131,7 @@ function addProdPorId(prodId){
   const p=produtoById(prodId);if(!p)return;
   if(!validarNumeroCampo($('#qtdProdDoc'),{positivo:true}))return;
   const qtd=parseNum($('#qtdProdDoc').value);
-  formDoc.d.itens.push({produtoId:p.id,nome:p.nome,qtd,precoUnit:arredondarValor(precoFinal(p))});
+  formDoc.d.itens.push(prepararItemDocumento({produtoId:p.id,nome:p.nome,qtd,precoUnit:arredondarValor(precoFinal(p)),precoManual:p.precoFinalManual!=null}));
   desenharFormDoc();
   sugereTituloDoc();
 }
@@ -2086,7 +2139,7 @@ function addAvulsoDoc(){
   const nome=$('#nomeAvulso').value.trim();if(!nome){alert('Descreva o item.');return;}
   if(!validarNumeroCampo($('#qtdAvulso'),{positivo:true})||!validarNumeroCampo($('#precoAvulso')))return;
   const qtd=parseNum($('#qtdAvulso').value),preco=parseNum($('#precoAvulso').value);
-  formDoc.d.itens.push({produtoId:null,nome,qtd,precoUnit:preco});
+  formDoc.d.itens.push({produtoId:null,nome,qtd,precoUnit:preco,precoManual:true});
   desenharFormDoc();
   sugereTituloDoc();
 }
@@ -2096,26 +2149,125 @@ function sugereTituloDoc(){
   if(tit&&!tit.value.trim()&&d.itens.length)tit.value=d.itens[0].nome;
 }
 function remItemDoc(idx){formDoc.d.itens.splice(idx,1);desenharFormDoc();}
+let formItemDoc=null;
+function abrirEdicaoItemDocumento(idx){
+  capturaCabecalhoDoc();
+  const item=JSON.parse(JSON.stringify(formDoc.d.itens[idx]));prepararItemDocumento(item);
+  if(!item.receita)item.receita={tempoMin:0,lucroPct:0,itens:[]};
+  formItemDoc={idx,item,recalcular:false};
+  abrirModal(`<h3>Produto e materiais</h3>
+    <form onsubmit="return aplicarItemDocumento(event)">
+      <div class="formgrid">
+        <div class="campo largo"><label>Produto deste item</label><select id="produtoItemDoc" onchange="trocarProdutoItemDocumento(this.value)"><option value="">Item fora do catálogo</option>
+          ${item.produtoId&&!produtoById(item.produtoId)?`<option value="${esc(item.produtoId)}" selected>${esc(item.nome)} · fora do catálogo</option>`:''}
+          ${db.produtos.map(p=>`<option value="${esc(p.id)}" ${p.id===item.produtoId?'selected':''}>${esc(p.nome)}</option>`).join('')}</select></div>
+        <div class="campo largo"><label>Descrição deste item</label><input name="nomeItem" value="${esc(item.nome)}" required oninput="formItemDoc.item.nome=this.value"></div>
+        <div class="campo"><label>Quantidade de produtos</label><input name="qtdItem" inputmode="decimal" value="${fmtQtd(item.qtd)}" oninput="formItemDoc.item.qtd=parseNum(this.value);previewItemDocumento()"></div>
+        <div class="campo"><label>Preço unitário (R$)</label><input name="precoItem" inputmode="decimal" value="${fmtQtd(item.precoUnit)}" oninput="formItemDoc.item.precoUnit=parseNum(this.value);formItemDoc.item.precoManual=true;previewItemDocumento()"></div>
+      </div>
+      <section class="form-secao"><div class="secao-titulo"><div><h4>Materiais deste item</h4><p class="muted">Quantidades para produzir 1 unidade.</p></div><button class="btn sec" type="button" onclick="buscarMaterialItemDocumento()">+ Adicionar material</button></div>
+        <div class="receita-lista" id="receitaItemDocumento"></div></section>
+      <div class="resumo-produto" id="previewItemDocumento" aria-live="polite"></div>
+      <p class="muted" id="modoPrecoItemDocumento"></p><button class="btn sec" type="button" onclick="usarPrecoCalculadoItemDocumento()">Usar preço calculado</button>
+      <div class="acoes"><button class="btn" type="submit">Aplicar ao ${formDoc.tipo==='pedido'?'pedido':'orçamento'}</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+    </form>`,{empilhar:true});
+  desenharMateriaisItemDocumento();previewItemDocumento();
+}
+function trocarProdutoItemDocumento(id){
+  const item=formItemDoc.item,p=produtoById(id);
+  item.produtoId=id||null;
+  if(p){
+    item.nome=p.nome;item.receita=copiarReceitaProduto(p);
+    if(!item.precoManual){item.precoUnit=arredondarValor(precoFinal(p));item.precoManual=p.precoFinalManual!=null;}
+    $('#modal [name=nomeItem]').value=item.nome;
+    formItemDoc.recalcular=true;
+  }
+  desenharMateriaisItemDocumento();previewItemDocumento();
+}
+function desenharMateriaisItemDocumento(){
+  const lista=$('#receitaItemDocumento');if(!lista)return;
+  lista.innerHTML=formItemDoc.item.receita.itens.map((r,idx)=>{
+    const m=materialById(r.materialId),nome=m?.nome||r.nome||'Material removido',un=m?.unidade||r.unidade;
+    return `<div class="receita-item"><div class="receita-material"><button class="btn sec" type="button" onclick="buscarMaterialItemDocumento(${idx})" aria-label="Trocar material: ${esc(nome)}">${esc(nome)}</button><small class="muted">${esc(unidadeNome(un))}${m?'':' · fora do cadastro'}</small></div>
+      <div class="campo receita-quantidade"><label>Quantidade (${esc(unidadeCurta(un))})</label><input class="itemMaterialQtd" data-idx="${idx}" inputmode="decimal" value="${fmtQtd(r.qtd)}" aria-label="Quantidade por unidade de ${esc(nome)}"></div>
+      <div class="receita-custo"><span class="muted">Para este item</span><strong data-total-material="${idx}"></strong></div>
+      <button class="btn mini perigo btn-remover" type="button" onclick="removerMaterialItemDocumento(${idx})" aria-label="Remover ${esc(nome)} deste item">${ICONE_LIXEIRA}</button></div>`;
+  }).join('')||'<div class="vazio"><strong>Nenhum material neste item</strong>Adicione os materiais necessários para a produção.</div>';
+  prepararInterface(lista);
+  lista.querySelectorAll('.itemMaterialQtd').forEach(campo=>campo.addEventListener('input',()=>{formItemDoc.item.receita.itens[+campo.dataset.idx].qtd=parseNum(campo.value);formItemDoc.recalcular=true;previewItemDocumento();}));
+}
+function buscarMaterialItemDocumento(idx=null){
+  abrirBuscaMaterial(idx,{voltar:'Voltar ao item',destino:'item',aoSelecionar:(materialId,posicao)=>{
+    const m=materialById(materialId),itens=formItemDoc.item.receita.itens;
+    const r={materialId,nome:m.nome,unidade:m.unidade,custoUnitario:custoUnit(m),qtd:posicao==null?1:itens[posicao].qtd};
+    if(posicao==null){itens.push(r);posicao=itens.length-1;}else itens[posicao]=r;
+    formItemDoc.recalcular=true;
+    desenharMateriaisItemDocumento();previewItemDocumento();
+    $(`#receitaItemDocumento .itemMaterialQtd[data-idx="${posicao}"]`)?.focus();
+  }});
+}
+function removerMaterialItemDocumento(idx){formItemDoc.item.receita.itens.splice(idx,1);formItemDoc.recalcular=true;desenharMateriaisItemDocumento();previewItemDocumento();}
+function previewItemDocumento(){
+  const item=formItemDoc.item;if(formItemDoc.recalcular)recalcularItemDocumento(item);
+  const c=custoProduto(item.receita);
+  $('#previewItemDocumento').innerHTML=`<div class="resumo-linha"><span>Custo dos materiais por unidade</span><span>${fmtBRL(c.materiais)}</span></div>
+    <div class="resumo-linha"><span>Custo de produção por unidade</span><span>${fmtBRL(c.total)}</span></div>
+    <div class="resumo-linha"><span>Preço unitário</span><span>${fmtCustoUnit(item.precoUnit)}</span></div>
+    <div class="resumo-linha total"><span>Total deste item</span><span>${fmtBRL(subtotalDoc(item))}</span></div>`;
+  $('#modoPrecoItemDocumento').textContent=item.precoManual?'Preço manual preservado.':'Preço calculado com os materiais, tempo e lucro deste item.';
+  if(!item.precoManual)$('#modal [name=precoItem]').value=fmtQtd(item.precoUnit);
+  $$('[data-total-material]').forEach(el=>{const r=item.receita.itens[+el.dataset.totalMaterial];el.textContent=fmtQtd(parseNum(r.qtd)*parseNum(item.qtd))+' '+unidadeCurta(r.unidade);});
+}
+function usarPrecoCalculadoItemDocumento(){formItemDoc.item.precoManual=false;formItemDoc.recalcular=true;previewItemDocumento();}
+function aplicarItemDocumento(ev){
+  ev.preventDefault();const f=ev.target;
+  if(!$$('.itemMaterialQtd').every(c=>validarNumeroCampo(c,{positivo:true}))||!validarNumeroCampo(f.qtdItem,{positivo:true})||!validarNumeroCampo(f.precoItem))return false;
+  if(!f.nomeItem.value.trim()){f.nomeItem.reportValidity();return false;}
+  const {idx,item}=formItemDoc;item.nome=f.nomeItem.value.trim();
+  formDoc.d.itens[idx]=JSON.parse(JSON.stringify(item));
+  fecharModal();desenharFormDoc();
+  $(`#tbDoc .docQtd[data-idx="${idx}"]`)?.focus();return false;
+}
+function atualizarOrcamentoPedido(pedido){
+  const orcamento=db.orcamentos.find(o=>o.id===pedido.orcamentoId);if(!orcamento)return false;
+  for(const campo of ['titulo','cliente','obs'])orcamento[campo]=pedido[campo];
+  orcamento.itens=JSON.parse(JSON.stringify(pedido.itens));orcamento.total=totalDoc(pedido);
+  return true;
+}
+function prepararEstoqueAlteracaoPedido(pedido,anterior){
+  const mudouProducao=!anterior||assinaturaProducaoDocumento(anterior)!==assinaturaProducaoDocumento(pedido);
+  const precisaBaixar=['em_producao','pronto','entregue'].includes(pedido.status)&&!pedido.estoqueBaixado;
+  if(pedido.status!=='cancelado'&&(mudouProducao||precisaBaixar)){
+    const faltas=faltasEstoque(pedido.itens,anterior);
+    if(faltas.length&&!confirm('Estoque insuficiente:\n'+faltas.map(x=>`• ${x.nome}: precisa de ${fmtQtd(x.precisa)} ${unidadeCurta(x.un)}, disponível para este pedido: ${fmtQtd(x.tem)}`).join('\n')+'\n\nContinuar mesmo assim?'))return false;
+  }
+  if(pedido.status==='cancelado'&&anterior?.status!=='cancelado'&&pedido.estoqueBaixado&&confirm('Devolver ao estoque os materiais deste pedido cancelado?')){
+    estornarEstoque(pedido);
+  }else if(pedido.estoqueBaixado&&mudouProducao){
+    ajustarEstoquePedido(pedido,pedido.itens);
+  }else if(precisaBaixar){baixarEstoque(pedido);}
+  return true;
+}
 function salvarDoc(ev){
   ev.preventDefault();const f=ev.target;const{tipo,d}=formDoc;
   if(!$$('#modal .docQtd:not(:disabled)').every(campo=>validarNumeroCampo(campo,{positivo:true}))||!$$('#modal .docPreco:not(:disabled)').every(campo=>validarNumeroCampo(campo)))return false;
   d.titulo=f.titulo.value.trim();
   d.cliente=f.cliente.value.trim();d.data=f.data.value||hojeISO();d.obs=f.obs.value.trim();
   if(tipo==='pedido'&&f.prazo)d.prazo=f.prazo.value||'';
+  if(tipo==='pedido'&&f.statusPedido)d.status=f.statusPedido.value;
   d.itens=d.itens.filter(i=>i.qtd>0);
   if(!d.itens.length){alert('Adicione pelo menos um item.');return false;}
   if(!d.titulo)d.titulo=d.itens[0].nome;
-  if(tipo==='pedido'&&!d.estoqueBaixado){
-    const faltas=faltasEstoque(d.itens);
-    if(faltas.length&&!confirm('⚠ Estoque insuficiente:\n'+faltas.map(x=>`• ${x.nome}: precisa de ${fmtQtd(x.precisa)} ${x.un}, tem ${fmtQtd(x.tem)}`).join('\n')+'\n\nSalvar o pedido mesmo assim?'))return false;
-  }
+  const anterior=tipo==='pedido'?db.pedidos.find(p=>p.id===d.id):null;
+  if(tipo==='pedido'&&!prepararEstoqueAlteracaoPedido(d,anterior))return false;
   d.total=totalDoc(d);
   if(tipo==='orcamento'){
     if(d.id){Object.assign(db.orcamentos.find(o=>o.id===d.id),d);}
     else{d.id=uid('o');d.numero='ORC-'+String(db.seq.orcamento++).padStart(4,'0');d.status='aberto';d.criadoEm=new Date().toISOString();db.orcamentos.push(d);}
   }else{
     if(d.id){Object.assign(db.pedidos.find(p=>p.id===d.id),d);}
-    else{d.id=uid('pd');d.numero='PED-'+String(db.seq.pedido++).padStart(4,'0');d.status='pendente';d.criadoEm=new Date().toISOString();db.pedidos.push(d);}
+    else{d.id=uid('pd');d.numero='PED-'+String(db.seq.pedido++).padStart(4,'0');d.criadoEm=new Date().toISOString();db.pedidos.push(d);}
+    atualizarOrcamentoPedido(d);
   }
   saveDB();fecharModal();
   showView(tipo==='orcamento'?'orcamentos':'pedidos');
@@ -2123,6 +2275,17 @@ function salvarDoc(ev){
 }
 
 /* --- visualização/ações --- */
+function materiaisPedidoHTML(pedido){
+  return `<section class="form-secao"><h4>Materiais para produção</h4><div class="documento-materiais">${pedido.itens.map((item,idx)=>{
+    const materiais=materiaisItemDocumento(item);
+    return `<div class="documento-material-produto"><div class="secao-titulo"><div><h4>${esc(item.nome)}</h4><span class="muted">${fmtQtd(item.qtd)} ${parseNum(item.qtd)===1?'unidade':'unidades'}</span></div><button class="btn sec mini" onclick="editarItemPedido('${pedido.id}',${idx})">Alterar produto e materiais</button></div>
+      ${materiais.length?`<table class="grid"><thead><tr><th>Material</th><th class="num">Por unidade</th><th class="num">Total para produzir</th></tr></thead><tbody>${materiais.map(r=>{
+        const m=materialById(r.materialId),nome=r.nome||m?.nome||'Material removido',un=r.unidade||m?.unidade||'Unidades';
+        return `<tr><td>${esc(nome)}</td><td class="num">${fmtQtd(r.qtd)} ${esc(unidadeCurta(un))}</td><td class="num"><strong>${fmtQtd(parseNum(r.qtd)*parseNum(item.qtd))} ${esc(unidadeCurta(un))}</strong></td></tr>`;
+      }).join('')}</tbody></table>`:'<p class="muted">Nenhum material informado para este item.</p>'}</div>`;
+  }).join('')}</div></section>`;
+}
+function editarItemPedido(id,idx){abrirFormDoc('pedido',id);abrirEdicaoItemDocumento(idx);}
 function verDoc(tipo,id){
   const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
   const ehOrc=tipo==='orcamento';
@@ -2147,11 +2310,12 @@ function verDoc(tipo,id){
   }else{
     if(PROXIMO_PED[d.status])botoes+=`<button class="btn" onclick="avancarPedido('${d.id}',true)">→ ${STATUS_PED[PROXIMO_PED[d.status]]}</button>`;
     botoes+=`<button class="btn sec" onclick="imprimirDoc('pedido','${d.id}')">Salvar PDF</button>`;
+    botoes+=`<button class="btn neutro" onclick="abrirFormDoc('pedido','${d.id}')">Editar pedido</button>`;
     if(d.status!=='cancelado'&&d.status!=='entregue')outrasAcoes+=`<button class="btn neutro" onclick="cancelarPedido('${d.id}')">Cancelar pedido</button>`;
-    outrasAcoes+=`<button class="btn neutro" onclick="fecharModal();abrirFormDoc('pedido','${d.id}')">Editar pedido</button>
-    <button class="btn perigo" onclick="excluirDoc('pedido','${d.id}')">${ICONE_LIXEIRA}Excluir</button>`;
+    outrasAcoes+=`<button class="btn perigo" onclick="excluirDoc('pedido','${d.id}')">${ICONE_LIXEIRA}Excluir</button>`;
   }
-  const prazoCampo=!ehOrc?`<div class="campo" style="max-width:200px;margin-top:10px"><label>Prazo de entrega</label><input type="date" value="${d.prazo||''}" onchange="salvarPrazo('${d.id}',this.value)"></div>`:'';
+  const prazoCampo=!ehOrc?`<div class="pedido-situacao"><div class="campo"><label>Status do pedido</label><select id="statusPedidoManual" onchange="alterarStatusPedido('${d.id}',this.value,true)">${Object.entries(STATUS_PED).map(([v,n])=>`<option value="${v}" ${d.status===v?'selected':''}>${n}</option>`).join('')}</select></div><div class="campo"><label>Prazo de entrega</label><input type="date" value="${d.prazo||''}" onchange="salvarPrazo('${d.id}',this.value)"></div></div>`:'';
+  const orcamentoVinculado=!ehOrc?db.orcamentos.find(o=>o.id===d.orcamentoId):null;
   abrirModal(`<h3>${ehOrc?'Orçamento':'Pedido'} ${esc(d.numero)} ${statusBadge}</h3>
     ${d.titulo?`<p style="font-size:1.05rem"><strong>${esc(d.titulo)}</strong></p>`:''}
     <p><strong>Cliente:</strong> ${esc(d.cliente||'—')} &nbsp; <strong>Data:</strong> ${fmtData(d.data)}${!ehOrc&&d.prazo?' &nbsp; <strong>Prazo:</strong> '+fmtData(d.prazo):''}</p>
@@ -2159,32 +2323,41 @@ function verDoc(tipo,id){
     <table class="grid"><thead><tr><th>Item</th><th class="num">Quantidade</th><th class="num">Valor unitário</th><th class="num">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
     <div class="resumo-linha total"><span>Total</span><span>${fmtBRL(totalDocumento(d))}</span></div>
     ${prazoCampo}
+    ${orcamentoVinculado?`<button class="link-acao" onclick="verDoc('orcamento','${orcamentoVinculado.id}')">Ver orçamento ${esc(orcamentoVinculado.numero)} →</button>`:''}
+    ${!ehOrc?materiaisPedidoHTML(d):''}
     <details><summary>Outras ações</summary><div class="acoes">${outrasAcoes}</div></details>
     <div class="acoes">${botoes}</div>`);
 }
 function statusOrcamento(id,st){const o=db.orcamentos.find(x=>x.id===id);o.status=st;saveDB();fecharModal();render();toast('Orçamento '+o.numero+': '+STATUS_ORC[st]);}
 function aprovarOrcamento(id){
   const o=db.orcamentos.find(x=>x.id===id);
+  if(!o)return;
+  const existente=db.pedidos.find(p=>p.orcamentoId===id);
+  if(existente){verDoc('pedido',existente.id);return;}
   const faltas=faltasEstoque(o.itens);
   if(faltas.length&&!confirm('⚠ Estoque insuficiente para este pedido:\n'+faltas.map(x=>`• ${x.nome}: precisa de ${fmtQtd(x.precisa)} ${x.un}, tem ${fmtQtd(x.tem)}`).join('\n')+'\n\nAprovar e gerar pedido mesmo assim?'))return;
   o.status='aprovado';
+  o.itens.forEach(prepararItemDocumento);
   const ped={id:uid('pd'),numero:'PED-'+String(db.seq.pedido++).padStart(4,'0'),orcamentoId:o.id,titulo:o.titulo,data:hojeISO(),cliente:o.cliente,obs:o.obs,itens:JSON.parse(JSON.stringify(o.itens)),total:totalDocumento(o),status:'pendente',prazo:'',criadoEm:new Date().toISOString()};
   db.pedidos.push(ped);saveDB();fecharModal();showView('pedidos');
   toast('Orçamento aprovado. Pedido '+ped.numero+' criado.');
 }
 function avancarPedido(id,manterModal){
-  const p=db.pedidos.find(x=>x.id===id);const prox=PROXIMO_PED[p.status];if(!prox)return;
-  let extra='';
-  if(prox==='em_producao'&&!p.estoqueBaixado){baixarEstoque(p);extra=' · estoque baixado';}
-  p.status=prox;saveDB();
-  if(manterModal){verDoc('pedido',id);}else{render();}
-  toast('Pedido '+p.numero+': '+STATUS_PED[prox]+extra);
+  const p=db.pedidos.find(x=>x.id===id),prox=PROXIMO_PED[p?.status];if(prox)alterarStatusPedido(id,prox,manterModal);
+}
+function alterarStatusPedido(id,status,manterModal=false){
+  const anterior=db.pedidos.find(x=>x.id===id);if(!anterior||!Object.hasOwn(STATUS_PED,status))return;
+  if(status===anterior.status)return;
+  if(status==='cancelado'&&!confirm('Cancelar o pedido '+anterior.numero+'?')){if(manterModal)verDoc('pedido',id);return;}
+  const pedido=JSON.parse(JSON.stringify(anterior));pedido.status=status;
+  pedido.itens.forEach(prepararItemDocumento);
+  if(!prepararEstoqueAlteracaoPedido(pedido,anterior)){if(manterModal)verDoc('pedido',id);return;}
+  Object.assign(anterior,pedido);saveDB();render();
+  if(manterModal)verDoc('pedido',id);
+  toast('Pedido '+pedido.numero+': '+STATUS_PED[status]);
 }
 function cancelarPedido(id){
-  const p=db.pedidos.find(x=>x.id===id);
-  if(!confirm('Cancelar o pedido '+p.numero+'?'))return;
-  if(p.estoqueBaixado&&confirm('Este pedido já baixou estoque. Devolver os materiais ao estoque?'))estornarEstoque(p);
-  p.status='cancelado';saveDB();fecharModal();render();toast('Pedido cancelado.');
+  alterarStatusPedido(id,'cancelado',true);
 }
 function salvarPrazo(id,v){const p=db.pedidos.find(x=>x.id===id);p.prazo=v;saveDB();render();}
 function excluirDoc(tipo,id){
