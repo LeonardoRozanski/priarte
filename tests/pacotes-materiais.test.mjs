@@ -24,7 +24,7 @@ export async function runTests(){
   check('800 folhas por 30 reais resultam em 0,0375 por folha e 0,375 para dez folhas',c=>{
     assert.equal(c.get('calcularCompraMaterial(dados).valorUnitario'),.0375);
     assert.equal(c.get('calcularCompraMaterial(dados).valorUnitario*10'),.375);
-    assert.equal(c.get('fmtCustoUnit(calcularCompraMaterial(dados).valorUnitario)'), 'R$\u00a00,0375');
+    assert.equal(c.get('fmtCustoUnit(calcularCompraMaterial(dados).valorUnitario)'), 'R$\u00a00,04');
     assert.equal(c.get('arredondarValor(calcularCompraMaterial(dados).valorUnitario*10)'),.38);
   });
   check('Frete e rateio entram no pacote antes da divisão por folha',c=>{

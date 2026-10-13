@@ -105,11 +105,11 @@ def main():
             assert page.evaluate('db.orcamentos[0].total') == 1.005
             page.get_by_role('button',name='Mensagem WhatsApp',exact=True).click()
             message = page.get_by_label('Mensagem do orçamento').input_value()
-            assert 'Valor unitário: R$\u00a00,335' in message
+            assert 'Valor unitário: R$\u00a00,34' in message
             assert message.count('Subtotal: R$\u00a00,34') == 3 and 'Total do orçamento: R$\u00a01,02' in message
             page.get_by_role('button',name='Voltar',exact=True).click()
             page.evaluate("fecharModal();abrirFormDoc('orcamento','o-teste')")
-            assert [page.locator('.docPreco').nth(i).input_value() for i in range(3)] == ['0,335']*3
+            assert [page.locator('.docPreco').nth(i).input_value() for i in range(3)] == ['0,34']*3
             page.get_by_role('button',name='Salvar orçamento',exact=True).click()
             assert page.evaluate('db.orcamentos[0].total') == 1.02
             assert page.evaluate('db.orcamentos[0].itens.map(i=>i.precoUnit)') == [0.335]*3

@@ -127,6 +127,7 @@ def main():
             value(first,'lucro','R$\u00a036,50')
             value(first,'margem','Margem sobre a venda: 56,2%')
             expect(first.locator('.pedido-financeiro')).to_contain_text('Lucro após os custos')
+            first.get_by_text('Detalhes dos custos e lucro',exact=True).click()
             first.get_by_text('Resultado por produto',exact=True).click()
             expect(first.locator('[data-financeiro-item="0"] [data-item-financeiro="materiais"]')).to_have_text('R$\u00a011,20')
             expect(first.locator('[data-financeiro-item="1"] [data-item-financeiro="lucro"]')).to_have_text('R$\u00a05,10')

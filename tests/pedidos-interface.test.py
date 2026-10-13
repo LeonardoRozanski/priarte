@@ -68,9 +68,13 @@ def check_order(page, order_id, total):
     fixture_unchanged(page)
 
 
+def edit_order_item(page, idx=0):
+    page.get_by_role('button', name='Editar materiais', exact=True).nth(idx).click()
+    page.get_by_text('Produto, quantidade e preço', exact=True).click()
+
+
 def save_order(page, order_id):
-    page.get_by_role('button', name='Salvar pedido', exact=True).click()
-    expect(page.locator('#overlay')).not_to_be_visible()
+    expect(page.locator('#modal .modal-cabecalho h3')).to_contain_text('Pedido PED-')
     page.evaluate("id=>verDoc('pedido',id)", order_id)
 
 
@@ -117,46 +121,46 @@ def main():
             expect(first.locator('.documento-materiais')).to_contain_text('10 folha')
             passed.append('Ver pedido mostra os materiais de cada produto, por unidade e no total')
 
-            first.get_by_role('button',name='Alterar produto e materiais',exact=True).first.click()
+            edit_order_item(first)
             first.get_by_label('Quantidade por unidade de Papel fictício para demonstração',exact=True).fill('3')
             first.get_by_label('Quantidade de produtos',exact=True).fill('6')
-            expect(first.get_by_label('Preço unitário (R$)',exact=True)).to_have_value('9')
-            first.get_by_role('button',name='Aplicar ao pedido',exact=True).click()
-            first.get_by_role('button',name='Produto e materiais',exact=True).nth(1).click()
+            expect(first.get_by_label('Preço unitário (R$)',exact=True)).to_have_value('9,00')
+            first.get_by_role('button',name='Salvar alterações',exact=True).click()
+            edit_order_item(first,1)
             first.get_by_label('Quantidade por unidade de Papel fictício para demonstração',exact=True).fill('4')
             expect(first.get_by_label('Preço unitário (R$)',exact=True)).to_have_value('12,34')
-            first.get_by_role('button',name='Aplicar ao pedido',exact=True).click()
+            first.get_by_role('button',name='Salvar alterações',exact=True).click()
             save_order(first,order_id)
             check_order(first,order_id,78.68)
             passed.append('Receita específica recalcula o preço automático e mantém o preço manual no pedido e orçamento')
 
-            first.get_by_role('button',name='Alterar produto e materiais',exact=True).first.click()
+            edit_order_item(first)
             first.get_by_label('Produto deste item',exact=True).select_option('p3')
             expect(first.get_by_label('Quantidade por unidade de Fita fictícia para demonstração',exact=True)).to_have_value('0,5')
-            expect(first.get_by_label('Preço unitário (R$)',exact=True)).to_have_value('3')
-            first.get_by_role('button',name='Aplicar ao pedido',exact=True).click()
+            expect(first.get_by_label('Preço unitário (R$)',exact=True)).to_have_value('3,00')
+            first.get_by_role('button',name='Salvar alterações',exact=True).click()
             save_order(first,order_id)
             check_order(first,order_id,42.68)
             first.get_by_label('Status do pedido',exact=True).select_option('em_producao')
             assert first.evaluate('db.materiais.map(m=>m.estoqueAtual)')==[42,27]
             passed.append('Troca de produto vale só para este trabalho; produção baixa a receita personalizada')
 
-            first.get_by_role('button',name='Alterar produto e materiais',exact=True).first.click()
+            edit_order_item(first)
             first.get_by_label('Quantidade por unidade de Fita fictícia para demonstração',exact=True).fill('1')
             first.get_by_role('button',name='+ Adicionar material',exact=True).click()
             first.get_by_role('textbox',name='Buscar material',exact=True).fill('Papel fictício')
             first.locator('.material-escolha').click()
             first.get_by_label('Quantidade por unidade de Papel fictício para demonstração',exact=True).fill('0,25')
-            first.get_by_role('button',name='Aplicar ao pedido',exact=True).click()
+            first.get_by_role('button',name='Salvar alterações',exact=True).click()
             save_order(first,order_id)
             assert first.evaluate('db.materiais.map(m=>m.estoqueAtual)')==[40.5,24]
             check_order(first,order_id,65.18)
             passed.append('Adicionar material e aumentar o consumo em produção baixa apenas a diferença')
 
-            first.get_by_role('button',name='Alterar produto e materiais',exact=True).first.click()
+            edit_order_item(first)
             first.get_by_role('button',name='Remover Fita fictícia para demonstração deste item',exact=True).click()
             first.get_by_label('Quantidade de produtos',exact=True).fill('4')
-            first.get_by_role('button',name='Aplicar ao pedido',exact=True).click()
+            first.get_by_role('button',name='Salvar alterações',exact=True).click()
             save_order(first,order_id)
             check_order(first,order_id,27.68)
             assert first.evaluate("mensagemOrcamento(db.orcamentos[0]).includes('27,68')")
@@ -165,13 +169,12 @@ def main():
             passed.append('Remover material e reduzir quantidade devolve o excesso aos lotes do pedido')
 
             before = first.evaluate('JSON.stringify(db)')
-            first.get_by_role('button',name='Alterar produto e materiais',exact=True).first.click()
+            edit_order_item(first)
             qty = first.get_by_label('Quantidade por unidade de Papel fictício para demonstração',exact=True)
             qty.fill('-1')
-            first.get_by_role('button',name='Aplicar ao pedido',exact=True).click()
+            first.get_by_role('button',name='Salvar alterações',exact=True).click()
             assert qty.evaluate('e=>e.validationMessage')
             qty.fill('99')
-            first.get_by_role('button',name='Cancelar',exact=True).click()
             first.get_by_role('button',name='Cancelar',exact=True).click()
             assert first.evaluate('JSON.stringify(db)')==before
             passed.append('Quantidade inválida é recusada e cancelar a edição não altera nenhum registro')
@@ -233,7 +236,7 @@ def main():
                     assert first.evaluate("document.querySelector('.modal-conteudo').scrollWidth<=document.querySelector('.modal-conteudo').clientWidth")
                     if screenshots and width in {390,1366}:
                         first.screenshot(path=str(screenshots/f'pedido-{theme}-{width}.png'))
-                    first.get_by_role('button',name='Alterar produto e materiais',exact=True).first.click()
+                    edit_order_item(first)
                     first.get_by_label('Quantidade por unidade de Papel fictício para demonstração',exact=True).focus()
                     keyboard_test.settle(first)
                     if width<=390:
@@ -241,7 +244,6 @@ def main():
                     keyboard_test.check_visible(first)
                     if screenshots and width==390:
                         first.screenshot(path=str(screenshots/f'materiais-teclado-{theme}.png'))
-                    first.get_by_role('button',name='Cancelar',exact=True).click()
                     first.get_by_role('button',name='Cancelar',exact=True).click()
                     layouts+=2
             passed.append(f'{layouts} verificações de pedido e materiais em celular, paisagem, PC, dois temas e teclado')

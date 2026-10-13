@@ -36,7 +36,7 @@ export async function runTests() {
     assert.deepEqual(c.get('["R$ 1.234,56","0,0125","0.0125",123.45,"",null,"2abc","Infinity","0x10"].map(parseNum)'), [1234.56,0.0125,0.0125,123.45,0,0,0,0,0]);
     assert.equal(c.get('Number.isNaN(converterNumero("2abc"))'), true);
     assert.equal(c.get('fmtQtd(0.0125)'), '0,0125');
-    assert.equal(c.get('fmtCustoUnit(0.075)'), 'R$\u00a00,075');
+    assert.equal(c.get('fmtCustoUnit(0.075)'), 'R$\u00a00,08');
   });
   check('Média ponderada usa quantidade restante e preserva precisão do custo unitário', c => {
     c.run(`db.materiais=[{id:'m',controlaEstoque:true,custoUnitario:99,estoqueAtual:10}];

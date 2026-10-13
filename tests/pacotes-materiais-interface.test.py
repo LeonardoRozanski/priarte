@@ -65,9 +65,9 @@ def main():
             first.get_by_label('Quantidade por pacote / compra',exact=True).fill('800')
             first.get_by_label('Valor por pacote (R$)',exact=True).fill('30')
             unit=first.get_by_label('Custo por folha (R$)',exact=True)
-            expect(unit).to_have_value('0,0375')
+            expect(unit).to_have_value('0,04')
             assert unit.evaluate('e=>e.readOnly')
-            expect(first.locator('[data-custo-calculado]')).to_have_text('R$\u00a00,0375')
+            expect(first.locator('[data-custo-calculado]')).to_have_text('R$\u00a00,04')
             first.get_by_role('button',name='Salvar material',exact=True).click()
             material_id=first.evaluate('db.materiais[0].id')
             assert first.evaluate('db.materiais[0].custoUnitario')==.0375
@@ -77,7 +77,7 @@ def main():
 
             first.evaluate('id=>abrirCompra(id)',material_id)
             expect(first.get_by_label('Quantidade por pacote / compra',exact=True)).to_have_value('800')
-            expect(first.get_by_label('Valor por pacote (R$)',exact=True)).to_have_value('30')
+            expect(first.get_by_label('Valor por pacote (R$)',exact=True)).to_have_value('30,00')
             first.get_by_role('button',name='Registrar compra',exact=True).click()
             assert first.evaluate('db.materiais[0].estoqueAtual')==800
             assert first.evaluate('db.lotes[0].valorUnitario')==.0375
@@ -128,7 +128,7 @@ def main():
               db.materiais.push({id:'m-legado',nome:'Papel fictício com custo antigo por pacote',unidade:'Folhas',controlaEstoque:true,estoqueAtual:800,estoqueMinimo:0,custoUnitario:30});
               abrirFormMaterial('m-legado');
             }""")
-            expect(first.get_by_label('Valor por pacote (R$)',exact=True)).to_have_value('30')
+            expect(first.get_by_label('Valor por pacote (R$)',exact=True)).to_have_value('30,00')
             first.get_by_label('Quantidade por pacote / compra',exact=True).fill('800')
             first.get_by_role('button',name='Salvar material',exact=True).click()
             assert first.evaluate("custoUnit(materialById('m-legado'))")==.0375
@@ -144,7 +144,7 @@ def main():
             passed.append('Editar quantidade do pacote corrige referências antigas; divisor inválido não altera dados ou estoque')
 
             first.evaluate("db.materiais.push({id:'s-legado',nome:'Serviço fictício fracionado',unidade:'Unidades',controlaEstoque:false,custoUnitario:.335,estoqueAtual:0,estoqueMinimo:0});abrirFormMaterial('s-legado')")
-            expect(first.get_by_label('Valor por pacote (R$)',exact=True)).to_have_value('0,335')
+            expect(first.get_by_label('Valor por pacote (R$)',exact=True)).to_have_value('0,34')
             first.get_by_role('button',name='Salvar material',exact=True).click()
             assert first.evaluate("custoUnit(materialById('s-legado'))")==.335
             passed.append('Serviços e referências fracionadas existentes continuam com a precisão original')

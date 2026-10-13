@@ -185,9 +185,9 @@ def main():
                 page.evaluate("imprimirDoc('orcamento','orc-teste')")
             download.value.save_as(path)
             _, text = text_pdf(path)
-            assert text.count('R$ 0,335') == 3 and text.count('R$ 0,34') == 3
+            assert text.count('R$ 0,34') == 6
             assert 'R$ 1,02' in text
-            passed.append('PDF soma os subtotais exibidos e mantém preços unitários fracionados')
+            passed.append('PDF exibe centavos e soma subtotais sem alterar os preços históricos')
             # User-entered HTML is text in both exports.
             page.evaluate("db.orcamentos[0].cliente='<img src=x onerror=alert(1)>';db.orcamentos[0].obs='<script>exemplo</script>';abrirMensagemWhatsApp('orc-teste')")
             assert '<img src=x' in page.get_by_label('Mensagem do orçamento').input_value()
