@@ -37,6 +37,7 @@ SETUP = """() => {
   db.pedidos[0].itens[0].receita.itens[0].nome=m.nome;
   db.orcamentos[0].itens=JSON.parse(JSON.stringify(db.pedidos[0].itens));
   db.pedidos[0].financeiro.despesas=[{id:'g',nome:'Frete fictício',valor:2.5}];
+  db.pedidos[0].prazo='2026-10-31';
   render();
 }"""
 
@@ -94,7 +95,7 @@ def main():
             if engine=='chromium' and chrome.exists():
                 options['executable_path']=str(chrome)
             browser=getattr(p,engine).launch(**options)
-            context=browser.new_context(viewport={'width':390,'height':844},has_touch=True,
+            context=browser.new_context(viewport={'width':390,'height':844},has_touch=True,locale='pt-BR',
                 is_mobile=engine=='webkit',service_workers='block')
             context.add_init_script(keyboard.VIEWPORT)
             page=context.new_page()
@@ -125,6 +126,14 @@ def main():
                                 page.screenshot(path=str(output/f'antes-{name}-{width}.png'))
                         elif '--audit' not in sys.argv:
                             keyboard.check_visible(page,focused=False)
+                        if name=='ver-pedido':
+                            date=page.get_by_label('Prazo de entrega',exact=True)
+                            status=page.get_by_label('Status do pedido',exact=True)
+                            field=date.locator('..').bounding_box()
+                            box=date.bounding_box()
+                            assert abs(box['height']-status.bounding_box()['height'])<1, (width,box)
+                            assert box['x']>=field['x'] and box['x']+box['width']<=field['x']+field['width']+1, (width,box,field)
+                            assert date.input_value()=='2026-10-31'
                         page.locator('.modal-conteudo').evaluate('e=>e.scrollTop=e.scrollHeight')
                         bottom=page.evaluate(MEASURE)
                         if bottom['wrappers']:

@@ -237,9 +237,11 @@
   .receita-material .btn.mini{justify-self:start;padding:8px 12px;background:var(--accent-soft);color:var(--accent)}
   .documento-material-produto td small{display:block;margin-top:4px;font-size:.75rem}
   .documento-item-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-  .pedido-situacao{display:flex;gap:16px;align-items:end;flex-wrap:wrap;margin-top:20px}
-  .pedido-situacao .campo{flex:1;min-width:170px}
-  .pedido-situacao select{width:100%}
+  .pedido-situacao{align-items:end;margin-top:20px}
+  .pedido-situacao .campo{min-width:0}
+  .pedido-situacao input[type=date]{appearance:none;-webkit-appearance:none;display:block;min-width:0;width:100%;max-width:100%;height:44px;line-height:normal;text-align:left}
+  .pedido-situacao input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left;margin:0}
+  .pedido-situacao input[type=date]::-webkit-datetime-edit{padding:0}
   .pedido-financeiro{padding:18px;background:var(--input);border:1px solid var(--line);border-radius:14px;margin:20px 0}
   .pedido-financeiro .secao-titulo{margin-bottom:14px}
   .pedido-financeiro h4{margin:0;font-size:1.05rem}
@@ -273,10 +275,6 @@
     .financeiro-resultado{grid-column:1/-1}
     .financeiro-resultado>strong{font-size:1.7rem}
     .financeiro-gasto{grid-template-columns:minmax(0,1fr) 100px 44px;gap:8px}
-  }
-  @media(min-width:361px) and (max-width:760px){
-    .pedido-situacao .campo{min-width:0}
-    .pedido-situacao input{min-width:0;width:100%}
   }
   .ficha-metricas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
   .ficha-metricas>div{display:grid;gap:5px;padding:14px;background:var(--input);border-radius:10px;min-width:0}
@@ -401,7 +399,6 @@
     .financeiro-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}
     .financeiro-resultado{grid-column:1/-1}
     .financeiro-gasto{grid-template-columns:minmax(0,1fr) 100px 44px;gap:8px}
-    .pedido-situacao .campo{min-width:0}
     table.grid.responsive,table.grid.responsive tbody{display:block;background:none;border:0;overflow:visible;box-shadow:none}
     table.grid.responsive thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
     table.grid.responsive tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;padding:18px;margin-bottom:12px;background:var(--input);border:1px solid var(--line);border-radius:var(--radius)}
@@ -966,6 +963,19 @@ function converterNumero(s){
   const n=Number(s);return Number.isFinite(n)?n:NaN;
 }
 function parseNum(s){const n=converterNumero(s);return Number.isFinite(n)?n:0;}
+const UNIDADES_TEMPO={min:{nome:'Minutos',fator:1,curta:'min'},h:{nome:'Horas',fator:60,curta:'h'},dia:{nome:'Dias de 8 horas',fator:480,curta:'dias de 8 h'}};
+function unidadeTempo(unidade){return Object.hasOwn(UNIDADES_TEMPO,unidade)?unidade:'min';}
+function minutosTempo(valor,unidade='min'){return converterNumero(valor)*UNIDADES_TEMPO[unidadeTempo(unidade)].fator;}
+function opcoesUnidadeTempo(unidade){return Object.entries(UNIDADES_TEMPO).map(([id,u])=>`<option value="${id}" ${id===unidadeTempo(unidade)?'selected':''}>${u.nome}</option>`).join('');}
+function tempoInformado(minutos,unidade='min'){
+  unidade=unidadeTempo(unidade);const u=UNIDADES_TEMPO[unidade],valor=parseNum(minutos)/u.fator;
+  return fmtQtd(valor)+' '+(unidade==='dia'?(valor===1?'dia':'dias')+' de 8 h':u.curta);
+}
+function validarTempoCampo(campo,unidade){
+  if(!validarNumeroCampo(campo))return false;
+  campo.setCustomValidity(Number.isFinite(minutosTempo(campo.value,unidade))?'':'Informe um tempo menor.');
+  if(campo.validationMessage){campo.reportValidity();return false;}return true;
+}
 function centavos(valor){
   const n=parseNum(valor),escalado=Math.abs(n)*100;
   const inteiro=Math.floor(escalado+.5+Number.EPSILON*Math.max(1,escalado)*4);
@@ -991,7 +1001,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.13-06';
+const APP_VERSAO='2026.10.13-07';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_espera:'Em espera',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_espera:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1269,7 +1279,7 @@ function lucroProduto(p){return somarValores([precoFinal(p),-custoProduto(p).tot
 function resumoPrecificacao(p){
   const c=custoProduto(p),manual=p.precoFinalManual!=null;
   return `<div class="resumo-linha"><span>Materiais</span><span>${fmtBRL(c.materiais)}</span></div>
-    <div class="resumo-linha"><span>Trabalho · ${fmtQtd(p.tempoMin||0)} min</span><span>${fmtBRL(c.maoDeObra)}</span></div>
+    <div class="resumo-linha"><span>Trabalho · ${tempoInformado(p.tempoMin,p.tempoUnidade)}</span><span>${fmtBRL(c.maoDeObra)}</span></div>
     <div class="resumo-linha"><span>Despesas do ateliê</span><span>${fmtBRL(c.custoFixo)}</span></div>
     <div class="resumo-linha total"><span>Custo total</span><span>${fmtBRL(c.total)}</span></div>
     <div class="resumo-linha"><span>${manual?'Lucro por unidade':'Lucro sobre o custo · '+fmtQtd(p.lucroPct||0)+'%'}</span><span>${fmtBRL(lucroProduto(p))}</span></div>
@@ -2118,7 +2128,7 @@ function fichaProduto(id){
 let formProd=null;
 function abrirFormProduto(id){
   const p=id?produtoById(id):{nome:'',obs:'',tempoMin:0,lucroPct:50,itens:[],precoFinalManual:null};
-  formProd={id:id||null,nome:p.nome,obs:p.obs,tempoMin:p.tempoMin,lucroPct:p.lucroPct,precoFinalManual:p.precoFinalManual,itens:(p.itens||[]).map(i=>({materialId:i.materialId,qtd:i.qtd})),fotos:fotosProduto(p).map(f=>({...f})),fotosProcessando:false};
+  formProd={id:id||null,nome:p.nome,obs:p.obs,tempoMin:parseNum(p.tempoMin),tempoUnidade:unidadeTempo(p.tempoUnidade),lucroPct:p.lucroPct,precoFinalManual:p.precoFinalManual,itens:(p.itens||[]).map(i=>({materialId:i.materialId,qtd:i.qtd})),fotos:fotosProduto(p).map(f=>({...f})),fotosProcessando:false};
   desenharFormProduto();
 }
 function desenharFormProduto(){
@@ -2143,7 +2153,8 @@ function desenharFormProduto(){
     <section class="form-secao">
       <div class="secao-titulo"><h4>Tempo e preço</h4></div>
       <div class="formgrid">
-      <div class="campo"><label>Tempo por unidade (min)</label><input name="tempoMin" inputmode="numeric" value="${fp.tempoMin}" oninput="formProd.tempoMin=parseNum(this.value);previewProduto()"></div>
+      <div class="campo"><label id="labelTempoProduto">Tempo por unidade (${UNIDADES_TEMPO[fp.tempoUnidade].curta})</label><input name="tempoMin" inputmode="decimal" value="${fmtQtd(fp.tempoMin/UNIDADES_TEMPO[fp.tempoUnidade].fator)}" oninput="formProd.tempoMin=minutosTempo(this.value,formProd.tempoUnidade);previewProduto()"></div>
+      <div class="campo"><label>Unidade do tempo por produto</label><select name="tempoUnidade" onchange="trocarTempoProduto(this.value)">${opcoesUnidadeTempo(fp.tempoUnidade)}</select></div>
       <div class="campo"><label>Lucro sobre o custo (%)</label><input name="lucroPct" inputmode="decimal" value="${fp.lucroPct}" oninput="formProd.lucroPct=parseNum(this.value);previewProduto()"></div>
       <div class="campo largo"><label>Preço de venda (opcional)</label><input name="precoFinalManual" inputmode="decimal" placeholder="Usar preço calculado" value="${fp.precoFinalManual==null?'':fp.precoFinalManual}" oninput="formProd.precoFinalManual=this.value.trim()?parseNum(this.value):null;previewProduto()"><small>Em branco, usa o preço calculado.</small></div>
       </div>
@@ -2213,15 +2224,21 @@ function previewProduto(){
   const el=$('#previewProd');if(!el)return;
   el.innerHTML=resumoPrecificacao(formProd);
 }
+function trocarTempoProduto(unidade){
+  formProd.tempoUnidade=unidadeTempo(unidade);
+  const f=$('#modal form'),u=UNIDADES_TEMPO[formProd.tempoUnidade];
+  if(Number.isFinite(formProd.tempoMin))f.tempoMin.value=fmtQtd(formProd.tempoMin/u.fator);
+  $('#labelTempoProduto').textContent='Tempo por unidade ('+u.curta+')';previewProduto();
+}
 async function salvarProduto(ev){
   ev.preventDefault();const f=ev.target;
   if(formProd.fotosProcessando){toast('Aguarde o preparo das fotos antes de salvar.');return false;}
-  if(![f.tempoMin,f.lucroPct,f.precoFinalManual].every(campo=>validarNumeroCampo(campo)))return false;
+  if(!validarTempoCampo(f.tempoMin,formProd.tempoUnidade)||![f.lucroPct,f.precoFinalManual].every(campo=>validarNumeroCampo(campo)))return false;
   if(!f.nome.value.trim()){f.nome.value='';f.nome.reportValidity();return false;}
   if(formProd.itens.some(i=>!materialById(i.materialId)||i.qtd<=0)){alert('Selecione um material e informe uma quantidade maior que zero em cada linha.');return false;}
   const itens=formProd.itens.filter(i=>i.materialId&&i.qtd>0);
   const pfTxt=valorCampoDinheiro(f.precoFinalManual).trim();
-  const dados={nome:f.nome.value.trim(),obs:f.obs.value.trim(),tempoMin:parseNum(f.tempoMin.value),lucroPct:parseNum(f.lucroPct.value),itens,precoFinalManual:pfTxt?parseNum(pfTxt):null,fotos:formProd.fotos.map(f=>({...f}))};
+  const dados={nome:f.nome.value.trim(),obs:f.obs.value.trim(),tempoMin:formProd.tempoMin,tempoUnidade:formProd.tempoUnidade,lucroPct:parseNum(f.lucroPct.value),itens,precoFinalManual:pfTxt?parseNum(pfTxt):null,fotos:formProd.fotos.map(f=>({...f}))};
   const antes=db.produtos.map(p=>({...p})),botao=f.querySelector('button[type=submit]');if(botao)botao.disabled=true;
   if(formProd.id){Object.assign(produtoById(formProd.id),dados);}else{db.produtos.push(Object.assign({id:uid('p')},dados));}
   try{await saveDB();fecharModal();render();toast('Produto salvo.');}
@@ -2592,12 +2609,14 @@ function abrirFinanceiroPedido(id){
   const pedido=db.pedidos.find(p=>p.id===id);if(!pedido)return;
   const financeiro=JSON.parse(JSON.stringify(pedido.financeiro||prepararFinanceiroPedido({...pedido})));
   if(!financeiro.despesas)financeiro.despesas=[];
+  financeiro.tempoUnidade=unidadeTempo(financeiro.tempoUnidade);
   formFinanceiroPedido={id,financeiro};
   const numero=v=>parseNum(v).toLocaleString('pt-BR',{maximumFractionDigits:12,useGrouping:false});
   abrirModal(`<h3>Custos do pedido ${esc(pedido.numero)}</h3><form onsubmit="return salvarFinanceiroPedido(event)">
     <section><div class="secao-titulo"><div><h4>Gastos extras</h4><p class="muted">Custos que não estão na receita dos produtos, como frete e taxas.</p></div><button class="btn sec" type="button" onclick="adicionarGastoPedido()">+ Adicionar gasto</button></div><div id="gastosFinanceirosPedido"></div></section>
     <section class="form-secao"><h4>Produção deste pedido</h4><div class="formgrid" style="margin-top:14px">
-      <div class="campo largo"><label>Tempo total de produção (min)</label><input name="tempoProducao" inputmode="decimal" placeholder="${esc(numero(resumoFinanceiroPedido(pedido).tempoMin))}" value="${financeiro.tempoMin==null?'':numero(financeiro.tempoMin)}" oninput="formFinanceiroPedido.financeiro.tempoMin=this.value.trim()?parseNum(this.value):null;previewFinanceiroPedido()"><small>Em branco, usa o tempo dos produtos.</small></div>
+      <div class="campo"><label id="labelTempoPedido">Tempo total de produção (${UNIDADES_TEMPO[financeiro.tempoUnidade].curta})</label><input name="tempoProducao" inputmode="decimal" placeholder="${esc(numero(resumoFinanceiroPedido(pedido).tempoMin/UNIDADES_TEMPO[financeiro.tempoUnidade].fator))}" value="${financeiro.tempoMin==null?'':numero(financeiro.tempoMin/UNIDADES_TEMPO[financeiro.tempoUnidade].fator)}" oninput="formFinanceiroPedido.financeiro.tempoMin=this.value.trim()?minutosTempo(this.value,formFinanceiroPedido.financeiro.tempoUnidade):null;previewFinanceiroPedido()"><small>Em branco, usa o tempo dos produtos.</small></div>
+      <div class="campo"><label>Unidade do tempo do pedido</label><select name="tempoUnidade" onchange="trocarTempoPedido(this.value)">${opcoesUnidadeTempo(financeiro.tempoUnidade)}</select></div>
       <div class="campo"><label>Trabalho por hora (R$)</label><input name="horaTrabalho" inputmode="decimal" value="${numero(financeiro.valorHoraTrabalho??valorHoraTrabalho())}" oninput="formFinanceiroPedido.financeiro.valorHoraTrabalho=parseNum(this.value);previewFinanceiroPedido()"></div>
       <div class="campo"><label>Despesas por hora (R$)</label><input name="horaDespesas" inputmode="decimal" value="${numero(financeiro.custoFixoHora??custoFixoHora())}" oninput="formFinanceiroPedido.financeiro.custoFixoHora=parseNum(this.value);previewFinanceiroPedido()"></div>
     </div></section>
@@ -2615,6 +2634,13 @@ function desenharGastosPedido(){
   prepararInterface(lista);
 }
 function adicionarGastoPedido(){formFinanceiroPedido.financeiro.despesas.push({id:uid('g'),nome:'',valor:0});desenharGastosPedido();previewFinanceiroPedido();$$('.nomeGastoPedido').at(-1)?.focus();}
+function trocarTempoPedido(unidade){
+  const financeiro=formFinanceiroPedido.financeiro;financeiro.tempoUnidade=unidadeTempo(unidade);
+  const f=$('#modal form'),u=UNIDADES_TEMPO[financeiro.tempoUnidade],pedido=db.pedidos.find(p=>p.id===formFinanceiroPedido.id);
+  if(financeiro.tempoMin==null)f.tempoProducao.value='';else if(Number.isFinite(financeiro.tempoMin))f.tempoProducao.value=fmtQtd(financeiro.tempoMin/u.fator);
+  f.tempoProducao.placeholder=fmtQtd(resumoFinanceiroPedido({...pedido,financeiro}).tempoMin/u.fator);
+  $('#labelTempoPedido').textContent='Tempo total de produção ('+u.curta+')';previewFinanceiroPedido();
+}
 function removerGastoPedido(idx){formFinanceiroPedido.financeiro.despesas.splice(idx,1);desenharGastosPedido();previewFinanceiroPedido();}
 function previewFinanceiroPedido(){
   const pedido=db.pedidos.find(p=>p.id===formFinanceiroPedido.id),f=resumoFinanceiroPedido({...pedido,financeiro:formFinanceiroPedido.financeiro});
@@ -2622,11 +2648,11 @@ function previewFinanceiroPedido(){
 }
 async function salvarFinanceiroPedido(ev){
   ev.preventDefault();const f=ev.target;
-  if(![f.tempoProducao,f.horaTrabalho,f.horaDespesas,...$$('.valorGastoPedido')].every(c=>validarNumeroCampo(c)))return false;
+  if(!validarTempoCampo(f.tempoProducao,formFinanceiroPedido.financeiro.tempoUnidade)||![f.horaTrabalho,f.horaDespesas,...$$('.valorGastoPedido')].every(c=>validarNumeroCampo(c)))return false;
   if(!$$('.nomeGastoPedido').every(c=>{if(c.value.trim())return true;c.value='';c.reportValidity();return false;}))return false;
   const pedido=db.pedidos.find(p=>p.id===formFinanceiroPedido.id),anterior=pedido.financeiro,botao=f.querySelector('button[type=submit]');
   const financeiro=JSON.parse(JSON.stringify(formFinanceiroPedido.financeiro));
-  financeiro.tempoMin=f.tempoProducao.value.trim()?parseNum(f.tempoProducao.value):null;
+  financeiro.tempoMin=formFinanceiroPedido.financeiro.tempoMin;
   financeiro.valorHoraTrabalho=parseNum(valorCampoDinheiro(f.horaTrabalho));financeiro.custoFixoHora=parseNum(valorCampoDinheiro(f.horaDespesas));
   financeiro.producaoIniciada=!!financeiro.producaoIniciada||!!pedido.estoqueBaixado;
   const nomes=$$('.nomeGastoPedido'),valores=$$('.valorGastoPedido');
@@ -2684,7 +2710,7 @@ function verDoc(tipo,id){
     if(d.status!=='cancelado'&&d.status!=='entregue')outrasAcoes+=`<button class="btn neutro" onclick="cancelarPedido('${d.id}')">Cancelar pedido</button>`;
     outrasAcoes+=`<button class="btn perigo" onclick="excluirDoc('pedido','${d.id}')">${ICONE_LIXEIRA}Excluir</button>`;
   }
-  const prazoCampo=!ehOrc?`<div class="pedido-situacao"><div class="campo"><label>Status do pedido</label><select id="statusPedidoManual" onchange="alterarStatusPedido('${d.id}',this.value,true)">${Object.entries(STATUS_PED).map(([v,n])=>`<option value="${v}" ${d.status===v?'selected':''}>${n}</option>`).join('')}</select></div><div class="campo"><label>Prazo de entrega</label><input type="date" value="${d.prazo||''}" onchange="salvarPrazo('${d.id}',this.value)"></div></div>`:'';
+  const prazoCampo=!ehOrc?`<div class="formgrid pedido-situacao"><div class="campo"><label>Status do pedido</label><select id="statusPedidoManual" onchange="alterarStatusPedido('${d.id}',this.value,true)">${Object.entries(STATUS_PED).map(([v,n])=>`<option value="${v}" ${d.status===v?'selected':''}>${n}</option>`).join('')}</select></div><div class="campo"><label>Prazo de entrega</label><input type="date" value="${d.prazo||''}" onchange="salvarPrazo('${d.id}',this.value)"></div></div>`:'';
   const orcamentoVinculado=!ehOrc?db.orcamentos.find(o=>o.id===d.orcamentoId):null;
   abrirModal(`<h3>${ehOrc?'Orçamento':'Pedido'} ${esc(d.numero)} ${statusBadge}</h3>
     ${d.titulo?`<p style="font-size:1.05rem"><strong>${esc(d.titulo)}</strong></p>`:''}

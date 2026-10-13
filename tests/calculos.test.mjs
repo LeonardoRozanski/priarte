@@ -26,6 +26,21 @@ export async function runTests() {
     try { test(makeContext()); passed.push(name); }
     catch (error) { throw new Error(name + ': ' + error.message, { cause: error }); }
   }
+  check('Horas e dias de oito horas aceitam frações e convertem para minutos sem arredondar', c => {
+    assert.deepEqual(c.get('[minutosTempo(8,"h"),minutosTempo(1,"dia"),minutosTempo("0,5","dia"),minutosTempo("1,5","h"),minutosTempo(90,"min")]'), [480,480,240,90,90]);
+    assert.equal(c.get('Number.isNaN(minutosTempo("texto","h"))'),true);
+    assert.equal(c.get('Number.isFinite(minutosTempo(1e308,"dia"))'),false);
+    assert.equal(c.get('tempoInformado(480,"dia")'),'1 dia de 8 h');
+    assert.equal(c.get('tempoInformado(720,"dia")'),'1,5 dias de 8 h');
+  });
+  check('O custo de um dia de trabalho corresponde a oito horas e preserva preços manuais', c => {
+    c.run(`db.config={salario:1200,diasMes:20,horasDia:6,divisorCustoFixo:120,custosFixos:[{valor:240}]};
+      db.materiais=[{id:'m',controlaEstoque:false,custoUnitario:2}];
+      db.produtos=[{itens:[{materialId:'m',qtd:1}],tempoMin:480,lucroPct:50,precoFinalManual:25}]`);
+    assert.equal(c.get('custoProduto(db.produtos[0]).total'),98);
+    assert.equal(c.get('precoSugerido(db.produtos[0])'),147);
+    assert.equal(c.get('precoFinal(db.produtos[0])'),25);
+  });
   check('Arredondamento de meio centavo, números negativos e erros de ponto flutuante', c => {
     assert.deepEqual(c.get('[1.005,2.675,9.995,-1.005,0.1+0.2,0.004,-0.004].map(arredondarValor)'), [1.01,2.68,10,-1.01,0.3,0,0]);
     assert.equal(c.get('arredondarValor(1000000.005)'), 1000000.01);
