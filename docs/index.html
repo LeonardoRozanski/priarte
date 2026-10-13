@@ -179,7 +179,7 @@
   .modal .modal-cabecalho h3{font-size:1.25rem;line-height:1.35;padding:0;margin:0;min-width:0}
   .modal .fechar{float:none;width:44px;height:44px;margin:0;border-radius:50%;flex-shrink:0}
   .modal .fechar:hover{background:var(--accent-soft);color:var(--accent)}
-  .modal-conteudo{padding:24px;overflow:auto;min-height:0;overscroll-behavior:contain;scroll-padding:16px}
+  .modal-conteudo{padding:24px;overflow-x:hidden;overflow-y:auto;min-height:0;overscroll-behavior-x:none;overscroll-behavior-y:contain;scroll-padding:16px}
   .modal-form{display:flex;flex-direction:column;min-height:0;overflow:hidden;margin:0}
   .modal-conteudo{flex:1}
   .modal-rodape{flex-shrink:0;padding:14px 24px;border-top:1px solid var(--line);background:var(--panel);border-radius:0 0 var(--radius) var(--radius)}
@@ -991,7 +991,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.13-05';
+const APP_VERSAO='2026.10.13-06';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_espera:'Em espera',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_espera:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1482,6 +1482,7 @@ function ajustarAlturaJanela(){
 function manterCampoModalVisivel(){
   const conteudo=$('#modal .modal-conteudo'),campo=document.activeElement;
   if(!conteudo)return;
+  conteudo.scrollLeft=0;
   const estilo=getComputedStyle(conteudo);
   conteudo.style.setProperty('--altura-campo-modal',Math.max(44,conteudo.clientHeight-parseFloat(estilo.paddingTop)-parseFloat(estilo.paddingBottom))+'px');
   if(!conteudo.contains(campo)||!campo.matches('input,textarea,select,[contenteditable="true"]'))return;

@@ -70,7 +70,7 @@ MEASURE = """() => {
   }).slice(0,6).map(e=>({tag:e.tagName,cls:e.className,width:e.getBoundingClientRect().width,text:e.textContent.slice(0,60)}));
   const wrappers=Array.from(document.querySelectorAll('#modal,.modal-form,.modal-conteudo,.modal-cabecalho,.modal-rodape'))
     .filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>({cls:e.className,width:e.clientWidth,scrollWidth:e.scrollWidth}));
-  return {outside,wrappers};
+  return {outside,wrappers,overflowX:style.overflowX,overflowY:style.overflowY,scrollLeft:content.scrollLeft};
 }"""
 
 
@@ -104,17 +104,21 @@ def main():
             page.evaluate(financial.FIXTURE)
             page.evaluate(SETUP)
             original=page.evaluate('JSON.stringify(db)')
-            for width,height,visible_width,font_size in [(320,568,320,16),(390,844,390,16),(760,700,760,16),(768,700,768,16),(844,390,844,16),(1024,768,1024,16),(1366,900,1366,16),(390,844,390,22),(980,844,390,16)]:
+            for width,height,visible_width,font_size in [(320,568,320,16),(390,844,390,16),(760,700,760,16),(768,700,768,16),(844,390,844,16),(1024,768,1024,16),(1366,900,1366,16),(390,844,390,22),(980,844,390,16),(390,844,389.5,16)]:
                 page.set_viewport_size({'width':width,'height':height})
                 for theme in ['escuro','claro']:
                     page.evaluate('t=>aplicaTema(t)',theme)
                     page.evaluate("() => {document.documentElement.style.setProperty('--safe-top','48px');document.documentElement.style.setProperty('--safe-bottom','34px')}")
                     page.evaluate('size=>document.documentElement.style.fontSize=size+"px"',font_size)
-                    keyboard.area(page,{'width':visible_width,'height':height,'offsetTop':0,'offsetLeft':0})
+                    keyboard.area(page,{'width':visible_width,'height':708 if visible_width==389.5 else height,'offsetTop':0,'offsetLeft':.25 if visible_width==389.5 else 0})
                     for name,command in COMMANDS:
                         page.evaluate(command)
                         keyboard.settle(page)
                         result=page.evaluate(MEASURE)
+                        if '--audit' not in sys.argv:
+                            assert result['overflowX'] in {'hidden','clip'}, (name,result)
+                            assert result['overflowY']=='auto', (name,result)
+                            assert result['scrollLeft']==0, (name,result)
                         if result['outside'] or result['wrappers']:
                             failures.append({'modal':name,'width':width,'visibleWidth':visible_width,'fontSize':font_size,'theme':theme,**result})
                             if theme=='escuro':
@@ -130,6 +134,25 @@ def main():
                             page.screenshot(path=str(output/f'depois-{name}-{width}.png'))
                         page.evaluate("() => {while(document.querySelector('#overlay').classList.contains('aberto'))fecharModal()}")
                         layouts+=1
+            # O conteúdo continua rolando para baixo, sem deslocar as ações ou abrir o eixo lateral.
+            page.evaluate("verDoc('pedido','ped-fin')")
+            keyboard.settle(page)
+            content=page.locator('.modal-conteudo')
+            header=page.locator('.modal-cabecalho').bounding_box()
+            footer=page.locator('.modal-rodape').bounding_box()
+            box=content.bounding_box()
+            if engine=='webkit':
+                # Playwright não oferece wheel no WebKit móvel. O deslocamento é verificado pela API de rolagem.
+                content.evaluate('e=>e.scrollBy(0,250)')
+            else:
+                page.mouse.move(box['x']+2,box['y']+20)
+                page.mouse.wheel(200,250)
+            page.wait_for_function("document.querySelector('.modal-conteudo').scrollTop>0")
+            assert content.evaluate('e=>e.scrollLeft')==0
+            assert abs(page.locator('.modal-cabecalho').bounding_box()['y']-header['y'])<1
+            assert abs(page.locator('.modal-rodape').bounding_box()['y']-footer['y'])<1
+            keyboard.check_visible(page,focused=False)
+            assert not page.evaluate(MEASURE)['outside']
             assert page.evaluate('JSON.stringify(db)')==original
             assert not errors, errors
             browser.close()
