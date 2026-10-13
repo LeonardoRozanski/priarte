@@ -231,6 +231,40 @@
   .pedido-situacao{display:flex;gap:16px;align-items:end;flex-wrap:wrap;margin-top:20px}
   .pedido-situacao .campo{flex:1;min-width:170px}
   .pedido-situacao select{width:100%}
+  .pedido-financeiro{padding:18px;background:var(--input);border:1px solid var(--line);border-radius:14px;margin:20px 0}
+  .pedido-financeiro .secao-titulo{margin-bottom:14px}
+  .pedido-financeiro h4{margin:0;font-size:1.05rem}
+  .financeiro-metricas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .financeiro-metrica{display:grid;align-content:start;gap:6px;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:0}
+  .financeiro-metrica>span{font-size:.8rem;color:var(--muted)}
+  .financeiro-metrica>strong{font-size:clamp(1.1rem,2.5vw,1.65rem);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-height:1.25}
+  .financeiro-resultado{background:color-mix(in srgb,var(--green) 9%,var(--panel));border-color:color-mix(in srgb,var(--green) 40%,var(--line))}
+  .financeiro-resultado>strong{color:var(--green)}
+  .financeiro-resultado.prejuizo{background:color-mix(in srgb,var(--red) 9%,var(--panel));border-color:color-mix(in srgb,var(--red) 40%,var(--line))}
+  .financeiro-resultado.prejuizo>strong{color:var(--red)}
+  .financeiro-composicao{margin-top:18px}
+  .financeiro-composicao>p{font-size:.8rem;color:var(--muted);margin:0 0 10px}
+  .financeiro-trilho{height:12px;background:var(--line);border-radius:999px;overflow:hidden;display:flex}
+  .financeiro-trilho>span{height:100%;background:var(--cor-financeiro)}
+  .financeiro-custos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px;margin-top:14px}
+  .financeiro-custo{display:grid;gap:4px;min-width:0;font-size:.9rem}
+  .financeiro-custo>span{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.8rem}
+  .financeiro-custo>span::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--cor-financeiro);flex-shrink:0}
+  .financeiro-custo strong{font-variant-numeric:tabular-nums}
+  .financeiro-nota{font-size:.8rem;color:var(--muted);margin:16px 0 0;line-height:1.5}
+  .financeiro-produtos{display:grid;gap:12px}
+  .financeiro-produto{border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+  .financeiro-produto h5{font-size:.95rem;margin:0 0 4px;overflow-wrap:anywhere}
+  .financeiro-produto .resumo-linha{font-size:.85rem}
+  .financeiro-gasto{display:grid;grid-template-columns:minmax(0,1fr) 130px 44px;gap:10px;align-items:end;margin-bottom:12px}
+  .financeiro-gasto .btn-remover{margin-bottom:0}
+  @media(max-width:760px){
+    .pedido-financeiro{padding:16px 12px}
+    .financeiro-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .financeiro-resultado{grid-column:1/-1}
+    .financeiro-resultado>strong{font-size:1.7rem}
+    .financeiro-gasto{grid-template-columns:minmax(0,1fr) 100px 44px;gap:8px}
+  }
   .ficha-metricas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
   .ficha-metricas>div{display:grid;gap:5px;padding:14px;background:var(--input);border-radius:10px;min-width:0}
   details{border-top:1px solid var(--line);padding:14px 0;margin-top:14px}
@@ -874,7 +908,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
 
 /* ================= estrutura vazia; dados somente no armazenamento privado ================= */
 const STORE_KEY='papelariaDBv1';
-const APP_VERSAO='2026.10.13-01';
+const APP_VERSAO='2026.10.13-02';
 const STATUS_ORC={aberto:'Aguardando aprovação',aprovado:'Aprovado',perdido:'Não aprovado'};
 const STATUS_PED={pendente:'A produzir',em_espera:'Em espera',em_producao:'Em produção',pronto:'Pronto',entregue:'Entregue',cancelado:'Cancelado'};
 const PROXIMO_PED={pendente:'em_producao',em_espera:'em_producao',em_producao:'pronto',pronto:'entregue'};
@@ -1013,7 +1047,7 @@ function materiaisEmAlerta(){return db.materiais.filter(m=>m.controlaEstoque!==f
 function copiarReceitaProduto(p){
   return {tempoMin:parseNum(p.tempoMin),lucroPct:parseNum(p.lucroPct),itens:(p.itens||[]).map(r=>{
     const m=materialById(r.materialId);
-    return {materialId:r.materialId,qtd:parseNum(r.qtd),nome:m?.nome||r.nome||'Material removido',unidade:m?.unidade||r.unidade||'Unidades',custoUnitario:m?custoUnit(m):parseNum(r.custoUnitario)};
+    return {materialId:r.materialId,qtd:parseNum(r.qtd),nome:m?.nome||r.nome||'Material removido',unidade:m?.unidade||r.unidade||'Unidades',custoUnitario:m?custoUnit(m):parseNum(r.custoUnitario),controlaEstoque:m?m.controlaEstoque!==false:r.controlaEstoque!==false};
   })};
 }
 function materiaisItemDocumento(item){return item.receita?.itens||produtoById(item.produtoId)?.itens||[];}
@@ -1051,6 +1085,12 @@ function faltasEstoque(itens,pedido=null){
 }
 /* baixa FIFO: consome do lote mais antigo primeiro; guarda o rastro para estorno */
 function baixarEstoque(ped){
+  prepararFinanceiroPedido(ped).producaoIniciada=true;
+  // Registra o custo dos serviços e materiais antes de consumir os lotes.
+  ped.itens.forEach(item=>{
+    prepararItemDocumento(item);
+    for(const r of item.receita?.itens||[]){const m=materialById(r.materialId);if(m){r.custoUnitario=custoUnit(m);r.controlaEstoque=m.controlaEstoque!==false;}}
+  });
   const need=necessidadeMateriais(ped.itens);
   ped.baixas=[];
   for(const mid of Object.keys(need))baixarMaterialPedido(ped,mid,need[mid]);
@@ -1065,9 +1105,9 @@ function baixarMaterialPedido(ped,mid,quantidade){
     const take=Math.min(l.qtdRestante,rest);
     l.qtdRestante=Math.round((l.qtdRestante-take)*10000)/10000;
     rest-=take;
-    ped.baixas.push({materialId:mid,loteId:l.id,qtd:Math.round(take*10000)/10000});
+    ped.baixas.push({materialId:mid,loteId:l.id,qtd:Math.round(take*10000)/10000,custoUnitario:parseNum(l.valorUnitario),nome:m.nome,unidade:m.unidade});
   }
-  if(rest>0.00001)ped.baixas.push({materialId:mid,loteId:null,qtd:Math.round(rest*10000)/10000});
+  if(rest>0.00001)ped.baixas.push({materialId:mid,loteId:null,qtd:Math.round(rest*10000)/10000,custoUnitario:custoUnit(m),custoEstimado:true,nome:m.nome,unidade:m.unidade});
   m.estoqueAtual=Math.round(((m.estoqueAtual||0)-quantidade)*10000)/10000;
 }
 function devolverMaterialPedido(ped,mid,quantidade){
@@ -1088,6 +1128,7 @@ function ajustarEstoquePedido(ped,itens){
   for(const mid of Object.keys(depois))if(depois[mid]>(antes[mid]||0)+1e-8)baixarMaterialPedido(ped,mid,depois[mid]-(antes[mid]||0));
 }
 function estornarEstoque(ped){
+  if(ped.estoqueBaixado)prepararFinanceiroPedido(ped).producaoIniciada=true;
   for(const b of (ped.baixas||[])){
     if(b.loteId){const l=db.lotes.find(x=>x.id===b.loteId);if(l)l.qtdRestante=Math.round((l.qtdRestante+b.qtd)*10000)/10000;}
     const m=materialById(b.materialId);if(m)m.estoqueAtual=Math.round(((m.estoqueAtual||0)+b.qtd)*10000)/10000;
@@ -1137,6 +1178,87 @@ function resumoPrecificacao(p){
     <div class="resumo-linha"><span>${manual?'Lucro por unidade':'Lucro sobre o custo · '+fmtQtd(p.lucroPct||0)+'%'}</span><span>${fmtBRL(lucroProduto(p))}</span></div>
     ${manual?`<div class="resumo-linha"><span>Preço calculado</span><span>${fmtBRL(precoSugerido(p))}</span></div>`:''}
     <div class="resumo-linha total"><span>Preço de venda${manual?' (definido por você)':' (calculado)'}</span><span>${fmtBRL(precoFinal(p))}</span></div>`;
+}
+
+/* Custos internos do pedido. Não mudam o preço combinado nem o catálogo. */
+function prepararFinanceiroPedido(pedido){
+  if(!pedido.financeiro)pedido.financeiro={valorHoraTrabalho:valorHoraTrabalho(),custoFixoHora:custoFixoHora(),tempoMin:null,despesas:[],producaoIniciada:!!pedido.estoqueBaixado};
+  return pedido.financeiro;
+}
+function distribuirValorFinanceiro(valor,pesos){
+  if(!pesos.length)return [];
+  let soma=pesos.reduce((s,p)=>s+Math.max(0,parseNum(p)),0);
+  if(!soma){pesos=pesos.map(()=>1);soma=pesos.length;}
+  const total=centavos(valor),partes=pesos.map((p,i)=>{const bruto=total*Math.max(0,parseNum(p))/soma;return {i,centavos:Math.floor(bruto),resto:bruto-Math.floor(bruto)};});
+  let resto=total-partes.reduce((s,p)=>s+p.centavos,0);
+  const ordem=[...partes].sort((a,b)=>b.resto-a.resto||a.i-b.i);
+  for(let i=0;i<resto;i++)ordem[i%ordem.length].centavos++;
+  return partes.map(p=>p.centavos/100);
+}
+function resumoFinanceiroPedido(pedido){
+  const cancelado=pedido.status==='cancelado',financeiro=pedido.financeiro||{},grupos=new Map(),itens=(pedido.itens||[]).map((item,idx)=>{
+    const receita=item.receita||produtoById(item.produtoId);
+    return {idx,nome:item.nome,qtd:parseNum(item.qtd),venda:cancelado?0:subtotalDoc(item),tempoMin:parseNum(receita?.tempoMin)*parseNum(item.qtd),custosInformados:!!receita,
+      materiais:0,trabalho:0,despesasAtelie:0,extras:0,detalhe:[]};
+  });
+  const obterGrupo=(mid,nome,un,controlaEstoque=true)=>{
+    if(!grupos.has(mid))grupos.set(mid,{materialId:mid,nome,unidade:un,controlaEstoque,quantidade:0,previsto:0,consumido:0,custoConsumido:0,estimado:false,entradas:[]});
+    return grupos.get(mid);
+  };
+  (pedido.itens||[]).forEach((item,idx)=>materiaisItemDocumento(item).forEach((r,ri)=>{
+    const m=materialById(r.materialId),qtd=parseNum(r.qtd)*parseNum(item.qtd);
+    const nome=r.nome||m?.nome||'Material fora do cadastro',un=r.unidade||m?.unidade||'Unidades';
+    const usarBase=pedido.estoqueBaixado||(cancelado&&financeiro.producaoIniciada);
+    const vu=usarBase&&r.custoUnitario!=null?parseNum(r.custoUnitario):(m?custoUnit(m):parseNum(r.custoUnitario));
+    const grupo=obterGrupo(r.materialId,nome,un,r.controlaEstoque!=null?r.controlaEstoque!==false:m?.controlaEstoque!==false);
+    grupo.quantidade+=qtd;grupo.previsto+=qtd*vu;grupo.entradas.push({idx,ri,qtd});
+    if(r.custoUnitario==null&&!m)grupo.estimado=true;
+    itens[idx].detalhe[ri]={nome,unidade:un,qtd,custoUnitario:vu,custo:0};
+  }));
+  if(pedido.estoqueBaixado)for(const baixa of pedido.baixas||[]){
+    const m=materialById(baixa.materialId),lote=db.lotes.find(l=>l.id===baixa.loteId);
+    const grupo=obterGrupo(baixa.materialId,baixa.nome||m?.nome||'Material fora do cadastro',baixa.unidade||m?.unidade||'Unidades');
+    const conhecido=baixa.custoUnitario!=null||lote?.valorUnitario!=null;
+    const vu=baixa.custoUnitario!=null?parseNum(baixa.custoUnitario):(lote?.valorUnitario!=null?parseNum(lote.valorUnitario):(grupo.quantidade>0?grupo.previsto/grupo.quantidade:(m?custoUnit(m):0)));
+    grupo.consumido+=parseNum(baixa.qtd);grupo.custoConsumido+=parseNum(baixa.qtd)*vu;
+    if(!conhecido||baixa.custoEstimado)grupo.estimado=true;
+  }
+  const pesos=itens.map(i=>Math.max(0,i.venda)),pesosQtd=itens.map(i=>Math.max(0,i.qtd));
+  const rateioExtra=pesos.some(p=>p>0)?pesos:pesosQtd;
+  const materiais=[...grupos.values()].map(grupo=>{
+    const baixado=grupo.consumido>0;
+    const semConsumo=cancelado&&!pedido.estoqueBaixado&&(grupo.controlaEstoque||!financeiro.producaoIniciada);
+    const qtd=baixado?grupo.consumido:(semConsumo?0:grupo.quantidade);
+    const bruto=baixado?grupo.custoConsumido:(semConsumo?0:grupo.previsto),custo=arredondarValor(bruto);
+    if(pedido.estoqueBaixado&&!baixado&&qtd>0&&grupo.controlaEstoque)grupo.estimado=true;
+    if(grupo.entradas.length){
+      const partes=distribuirValorFinanceiro(custo,grupo.entradas.map(e=>e.qtd));
+      grupo.entradas.forEach((e,i)=>{const d=itens[e.idx].detalhe[e.ri];d.custo=partes[i];d.custoUnitario=qtd>0?bruto/qtd:0;d.qtd=grupo.quantidade>0?qtd*e.qtd/grupo.quantidade:e.qtd;itens[e.idx].materiais=somarValores([itens[e.idx].materiais,partes[i]]);});
+    }else{
+      distribuirValorFinanceiro(custo,rateioExtra).forEach((valor,i)=>itens[i].materiais=somarValores([itens[i].materiais,valor]));
+    }
+    return {materialId:grupo.materialId,nome:grupo.nome,unidade:grupo.unidade,qtd,custo,custoUnitario:qtd>0?bruto/qtd:0,baixado,estimado:grupo.estimado,
+      divergente:baixado&&Math.abs(grupo.consumido-grupo.quantidade)>0.0001};
+  });
+  const tempoProdutos=itens.reduce((s,i)=>s+i.tempoMin,0),tempoMin=financeiro.tempoMin!=null?parseNum(financeiro.tempoMin):(cancelado&&!pedido.estoqueBaixado&&!financeiro.producaoIniciada?0:tempoProdutos);
+  const horaTrabalho=financeiro.valorHoraTrabalho!=null?parseNum(financeiro.valorHoraTrabalho):valorHoraTrabalho();
+  const horaDespesas=financeiro.custoFixoHora!=null?parseNum(financeiro.custoFixoHora):custoFixoHora();
+  const trabalho=arredondarValor(tempoMin/60*horaTrabalho),despesasAtelie=arredondarValor(tempoMin/60*horaDespesas);
+  const despesas=(financeiro.despesas||[]).map(d=>({...d,valor:arredondarValor(d.valor)}));
+  const extras=somarValores(despesas.map(d=>d.valor)),pesosTempo=tempoProdutos>0?itens.map(i=>i.tempoMin):rateioExtra;
+  const trabalhos=distribuirValorFinanceiro(trabalho,pesosTempo),rateios=distribuirValorFinanceiro(despesasAtelie,pesosTempo),custosExtras=distribuirValorFinanceiro(extras,rateioExtra);
+  itens.forEach((item,i)=>{
+    item.trabalho=trabalhos[i];item.despesasAtelie=rateios[i];item.extras=custosExtras[i];
+    item.custoTotal=somarValores([item.materiais,item.trabalho,item.despesasAtelie,item.extras]);
+    item.lucro=somarValores([item.venda,-item.custoTotal]);
+  });
+  const valorPedido=totalDocumento(pedido),venda=cancelado?0:valorPedido,custoMateriais=somarValores(materiais.map(m=>m.custo));
+  const custoTotal=somarValores([custoMateriais,trabalho,despesasAtelie,extras]),lucro=somarValores([venda,-custoTotal]);
+  const semBaseTrabalho=financeiro.valorHoraTrabalho==null||financeiro.custoFixoHora==null;
+  const estimado=!pedido.estoqueBaixado||materiais.some(m=>m.estimado)||semBaseTrabalho||itens.some(i=>!i.custosInformados);
+  return {valorPedido,venda,cancelado,materiais:custoMateriais,trabalho,despesasAtelie,extras,custoTotal,lucro,margem:venda>0?lucro/venda*100:null,
+    tempoMin,horaTrabalho,horaDespesas,itens,detalheMateriais:materiais,despesas,estimado,custosPendentes:itens.filter(i=>!i.custosInformados).length+(itens.length?0:1),
+    divergenciaConsumo:materiais.some(m=>m.divergente),semBaseTrabalho};
 }
 
 /* ================= navegação ================= */
@@ -2199,7 +2321,7 @@ function desenharMateriaisItemDocumento(){
 function buscarMaterialItemDocumento(idx=null){
   abrirBuscaMaterial(idx,{voltar:'Voltar ao item',destino:'item',aoSelecionar:(materialId,posicao)=>{
     const m=materialById(materialId),itens=formItemDoc.item.receita.itens;
-    const r={materialId,nome:m.nome,unidade:m.unidade,custoUnitario:custoUnit(m),qtd:posicao==null?1:itens[posicao].qtd};
+    const r={materialId,nome:m.nome,unidade:m.unidade,custoUnitario:custoUnit(m),controlaEstoque:m.controlaEstoque!==false,qtd:posicao==null?1:itens[posicao].qtd};
     if(posicao==null){itens.push(r);posicao=itens.length-1;}else itens[posicao]=r;
     formItemDoc.recalcular=true;
     desenharMateriaisItemDocumento();previewItemDocumento();
@@ -2265,6 +2387,7 @@ function salvarDoc(ev){
     if(d.id){Object.assign(db.orcamentos.find(o=>o.id===d.id),d);}
     else{d.id=uid('o');d.numero='ORC-'+String(db.seq.orcamento++).padStart(4,'0');d.status='aberto';d.criadoEm=new Date().toISOString();db.orcamentos.push(d);}
   }else{
+    prepararFinanceiroPedido(d);
     if(d.id){Object.assign(db.pedidos.find(p=>p.id===d.id),d);}
     else{d.id=uid('pd');d.numero='PED-'+String(db.seq.pedido++).padStart(4,'0');d.criadoEm=new Date().toISOString();db.pedidos.push(d);}
     atualizarOrcamentoPedido(d);
@@ -2275,13 +2398,93 @@ function salvarDoc(ev){
 }
 
 /* --- visualização/ações --- */
-function materiaisPedidoHTML(pedido){
+function tempoFinanceiroPedido(minutos){
+  const total=Math.round(parseNum(minutos)*100)/100,horas=Math.floor(total/60),min=arredondarValor(total-horas*60);
+  return horas?fmtQtd(horas)+' h'+(min?' '+fmtQtd(min)+' min':''):fmtQtd(total)+' min';
+}
+function financeiroPedidoHTML(pedido,f=resumoFinanceiroPedido(pedido)){
+  const partes=[['materiais','Materiais','accent'],['trabalho','Trabalho','blue'],['despesasAtelie','Despesas do ateliê','teal'],['extras','Gastos extras','amber']];
+  const resultado=f.cancelado?'Resultado do cancelamento':f.custosPendentes?'Resultado parcial':f.lucro<0?(f.estimado?'Prejuízo estimado':'Prejuízo calculado'):(f.estimado?'Lucro previsto':'Lucro após os custos');
+  const notas=[];
+  if(f.cancelado)notas.push('Pedido cancelado: venda considerada como zero. Gastos registrados, produção iniciada e materiais não devolvidos continuam nos custos.');
+  else notas.push(f.detalheMateriais.some(m=>m.baixado)?'Materiais pelos lotes consumidos.':'Materiais pelas quantidades e custos da receita deste pedido.');
+  if(f.semBaseTrabalho)notas.push('Trabalho e despesas usam os valores atuais do ateliê.');
+  if(f.custosPendentes)notas.push(f.custosPendentes+' '+(f.custosPendentes===1?'item sem custos informados.':'itens sem custos informados.')+' Complete a receita ou registre os gastos.');
+  if(f.divergenciaConsumo)notas.push('A baixa difere da receita atual; o custo considera a quantidade baixada.');
+  return `<section class="pedido-financeiro" aria-labelledby="tituloFinanceiroPedido"><div class="secao-titulo"><h4 id="tituloFinanceiroPedido">Resumo financeiro</h4><button class="btn mini sec" onclick="abrirFinanceiroPedido('${pedido.id}')">Editar custos</button></div>
+    <div class="financeiro-metricas">
+      <div class="financeiro-metrica"><span>${f.cancelado?'Venda considerada':'Valor do pedido'}</span><strong data-financeiro="venda">${fmtBRL(f.venda)}</strong><small class="muted">${f.cancelado?'Valor combinado: '+fmtBRL(f.valorPedido):'Valor de venda dos produtos'}</small></div>
+      <div class="financeiro-metrica"><span>Custos totais</span><strong data-financeiro="custoTotal">${fmtBRL(f.custoTotal)}</strong><small class="muted">Materiais, produção e gastos extras</small></div>
+      <div class="financeiro-metrica financeiro-resultado ${f.lucro<0?'prejuizo':''}"><span>${resultado}</span><strong data-financeiro="lucro">${fmtBRL(f.lucro)}</strong><small class="muted" data-financeiro="margem">${f.margem===null?'Sem margem com venda zerada':'Margem sobre a venda: '+f.margem.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'}</small></div>
+    </div>
+    <div class="financeiro-composicao"><p>Composição dos custos</p><div class="financeiro-trilho" role="img" aria-label="${esc(partes.map(([chave,nome])=>nome+': '+fmtBRL(f[chave])).join('; '))}">${partes.filter(([chave])=>f[chave]>0).map(([chave,,cor])=>`<span style="width:${f.custoTotal>0?f[chave]/f.custoTotal*100:0}%;--cor-financeiro:var(--${cor})"></span>`).join('')}</div>
+      <div class="financeiro-custos">${partes.map(([chave,nome,cor])=>`<div class="financeiro-custo" style="--cor-financeiro:var(--${cor})"><span>${nome}</span><strong data-financeiro="${chave}">${fmtBRL(f[chave])}</strong></div>`).join('')}</div>
+    </div>
+    <p class="financeiro-nota">${tempoFinanceiroPedido(f.tempoMin)} de produção · trabalho ${fmtCustoUnit(f.horaTrabalho)}/h · despesas ${fmtCustoUnit(f.horaDespesas)}/h</p>
+    <details><summary>Resultado por produto</summary><div class="financeiro-produtos">${f.itens.map((item,idx)=>`<div class="financeiro-produto" data-financeiro-item="${idx}"><h5>${esc(item.nome)}</h5><span class="muted">${fmtQtd(item.qtd)} ${item.qtd===1?'unidade':'unidades'}${item.custosInformados?'':' · custos não informados'}</span>
+      ${[['venda','Venda'],['materiais','Materiais'],['trabalho','Trabalho'],['despesasAtelie','Despesas do ateliê'],['extras','Gastos extras'],['custoTotal','Custo total'],['lucro','Lucro após os custos']].map(([chave,nome])=>`<div class="resumo-linha ${chave==='lucro'?'total':''}"><span>${nome}</span><span data-item-financeiro="${chave}" ${chave==='lucro'&&item.lucro<0?'class="neg"':''}>${fmtBRL(item[chave])}</span></div>`).join('')}</div>`).join('')}</div></details>
+    ${f.despesas.length?`<details><summary>Gastos extras · ${fmtBRL(f.extras)}</summary>${f.despesas.map(d=>`<div class="resumo-linha"><span>${esc(d.nome)}</span><span>${fmtBRL(d.valor)}</span></div>`).join('')}</details>`:''}
+    <p class="financeiro-nota">${notas.map(esc).join(' ')}</p>
+  </section>`;
+}
+let formFinanceiroPedido=null;
+function abrirFinanceiroPedido(id){
+  const pedido=db.pedidos.find(p=>p.id===id);if(!pedido)return;
+  const financeiro=JSON.parse(JSON.stringify(pedido.financeiro||prepararFinanceiroPedido({...pedido})));
+  if(!financeiro.despesas)financeiro.despesas=[];
+  formFinanceiroPedido={id,financeiro};
+  const numero=v=>parseNum(v).toLocaleString('pt-BR',{maximumFractionDigits:12,useGrouping:false});
+  abrirModal(`<h3>Custos do pedido ${esc(pedido.numero)}</h3><form onsubmit="return salvarFinanceiroPedido(event)">
+    <section><div class="secao-titulo"><div><h4>Gastos extras</h4><p class="muted">Custos que não estão na receita dos produtos, como frete e taxas.</p></div><button class="btn sec" type="button" onclick="adicionarGastoPedido()">+ Adicionar gasto</button></div><div id="gastosFinanceirosPedido"></div></section>
+    <section class="form-secao"><h4>Produção deste pedido</h4><div class="formgrid" style="margin-top:14px">
+      <div class="campo largo"><label>Tempo total de produção (min)</label><input name="tempoProducao" inputmode="decimal" placeholder="${esc(numero(resumoFinanceiroPedido(pedido).tempoMin))}" value="${financeiro.tempoMin==null?'':numero(financeiro.tempoMin)}" oninput="formFinanceiroPedido.financeiro.tempoMin=this.value.trim()?parseNum(this.value):null;previewFinanceiroPedido()"><small>Em branco, usa o tempo dos produtos.</small></div>
+      <div class="campo"><label>Trabalho por hora (R$)</label><input name="horaTrabalho" inputmode="decimal" value="${numero(financeiro.valorHoraTrabalho??valorHoraTrabalho())}" oninput="formFinanceiroPedido.financeiro.valorHoraTrabalho=parseNum(this.value);previewFinanceiroPedido()"></div>
+      <div class="campo"><label>Despesas por hora (R$)</label><input name="horaDespesas" inputmode="decimal" value="${numero(financeiro.custoFixoHora??custoFixoHora())}" oninput="formFinanceiroPedido.financeiro.custoFixoHora=parseNum(this.value);previewFinanceiroPedido()"></div>
+    </div></section>
+    <div class="resumo-produto" id="previewFinanceiroPedido" aria-live="polite"></div>
+    <div class="acoes"><button class="btn" type="submit">Salvar custos</button><button class="btn neutro" type="button" onclick="fecharModal()">Cancelar</button></div>
+  </form>`,{empilhar:true});
+  desenharGastosPedido();previewFinanceiroPedido();
+}
+function desenharGastosPedido(){
+  const lista=$('#gastosFinanceirosPedido');
+  lista.innerHTML=formFinanceiroPedido.financeiro.despesas.map((d,idx)=>`<div class="financeiro-gasto">
+    <div class="campo"><label>Descrição</label><input class="nomeGastoPedido" aria-label="Descrição do gasto ${idx+1}" value="${esc(d.nome)}" required oninput="formFinanceiroPedido.financeiro.despesas[${idx}].nome=this.value"></div>
+    <div class="campo"><label>Valor (R$)</label><input class="valorGastoPedido" aria-label="Valor do gasto ${idx+1}" inputmode="decimal" value="${fmtQtd(d.valor)}" oninput="formFinanceiroPedido.financeiro.despesas[${idx}].valor=parseNum(this.value);previewFinanceiroPedido()"></div>
+    <button class="btn mini perigo btn-remover" type="button" onclick="removerGastoPedido(${idx})" aria-label="Remover gasto ${idx+1}">${ICONE_LIXEIRA}</button></div>`).join('')||'<p class="muted">Nenhum gasto extra registrado.</p>';
+  prepararInterface(lista);
+}
+function adicionarGastoPedido(){formFinanceiroPedido.financeiro.despesas.push({id:uid('g'),nome:'',valor:0});desenharGastosPedido();previewFinanceiroPedido();$$('.nomeGastoPedido').at(-1)?.focus();}
+function removerGastoPedido(idx){formFinanceiroPedido.financeiro.despesas.splice(idx,1);desenharGastosPedido();previewFinanceiroPedido();}
+function previewFinanceiroPedido(){
+  const pedido=db.pedidos.find(p=>p.id===formFinanceiroPedido.id),f=resumoFinanceiroPedido({...pedido,financeiro:formFinanceiroPedido.financeiro});
+  $('#previewFinanceiroPedido').innerHTML=`<div class="resumo-linha"><span>Valor do pedido</span><span>${fmtBRL(f.venda)}</span></div><div class="resumo-linha"><span>Custos totais</span><span>${fmtBRL(f.custoTotal)}</span></div><div class="resumo-linha total"><span>${f.lucro<0?'Prejuízo':'Lucro após os custos'}</span><span ${f.lucro<0?'class="neg"':''}>${fmtBRL(f.lucro)}</span></div>`;
+}
+async function salvarFinanceiroPedido(ev){
+  ev.preventDefault();const f=ev.target;
+  if(![f.tempoProducao,f.horaTrabalho,f.horaDespesas,...$$('.valorGastoPedido')].every(c=>validarNumeroCampo(c)))return false;
+  if(!$$('.nomeGastoPedido').every(c=>{if(c.value.trim())return true;c.value='';c.reportValidity();return false;}))return false;
+  const pedido=db.pedidos.find(p=>p.id===formFinanceiroPedido.id),anterior=pedido.financeiro,botao=f.querySelector('button[type=submit]');
+  const financeiro=JSON.parse(JSON.stringify(formFinanceiroPedido.financeiro));
+  financeiro.tempoMin=f.tempoProducao.value.trim()?parseNum(f.tempoProducao.value):null;
+  financeiro.valorHoraTrabalho=parseNum(f.horaTrabalho.value);financeiro.custoFixoHora=parseNum(f.horaDespesas.value);
+  financeiro.producaoIniciada=!!financeiro.producaoIniciada||!!pedido.estoqueBaixado;
+  const nomes=$$('.nomeGastoPedido'),valores=$$('.valorGastoPedido');
+  financeiro.despesas.forEach((d,i)=>{d.nome=nomes[i].value.trim();d.valor=arredondarValor(valores[i].value);});
+  pedido.financeiro=financeiro;botao.disabled=true;
+  try{await saveDB();fecharModal();render();verDoc('pedido',pedido.id);toast('Custos do pedido salvos.');}
+  catch(e){pedido.financeiro=anterior;toast(e.message);}
+  finally{botao.disabled=false;}
+  return false;
+}
+function materiaisPedidoHTML(pedido,financeiro=resumoFinanceiroPedido(pedido)){
   return `<section class="form-secao"><h4>Materiais para produção</h4><div class="documento-materiais">${pedido.itens.map((item,idx)=>{
     const materiais=materiaisItemDocumento(item);
     return `<div class="documento-material-produto"><div class="secao-titulo"><div><h4>${esc(item.nome)}</h4><span class="muted">${fmtQtd(item.qtd)} ${parseNum(item.qtd)===1?'unidade':'unidades'}</span></div><button class="btn sec mini" onclick="editarItemPedido('${pedido.id}',${idx})">Alterar produto e materiais</button></div>
-      ${materiais.length?`<table class="grid"><thead><tr><th>Material</th><th class="num">Por unidade</th><th class="num">Total para produzir</th></tr></thead><tbody>${materiais.map(r=>{
+      ${materiais.length?`<table class="grid"><thead><tr><th>Material</th><th class="num">Por unidade</th><th class="num">Total para produzir</th><th class="num">Custo unitário</th><th class="num">Custo deste item</th></tr></thead><tbody>${materiais.map((r,ri)=>{
         const m=materialById(r.materialId),nome=r.nome||m?.nome||'Material removido',un=r.unidade||m?.unidade||'Unidades';
-        return `<tr><td>${esc(nome)}</td><td class="num">${fmtQtd(r.qtd)} ${esc(unidadeCurta(un))}</td><td class="num"><strong>${fmtQtd(parseNum(r.qtd)*parseNum(item.qtd))} ${esc(unidadeCurta(un))}</strong></td></tr>`;
+        const custo=financeiro.itens[idx]?.detalhe[ri];
+        return `<tr><td>${esc(nome)}</td><td class="num">${fmtQtd(r.qtd)} ${esc(unidadeCurta(un))}</td><td class="num"><strong>${fmtQtd(parseNum(r.qtd)*parseNum(item.qtd))} ${esc(unidadeCurta(un))}</strong></td><td class="num">${fmtCustoUnit(custo?.custoUnitario||0)}</td><td class="num">${fmtBRL(custo?.custo||0)}</td></tr>`;
       }).join('')}</tbody></table>`:'<p class="muted">Nenhum material informado para este item.</p>'}</div>`;
   }).join('')}</div></section>`;
 }
@@ -2289,6 +2492,7 @@ function editarItemPedido(id,idx){abrirFormDoc('pedido',id);abrirEdicaoItemDocum
 function verDoc(tipo,id){
   const d=(tipo==='orcamento'?db.orcamentos:db.pedidos).find(x=>x.id===id);if(!d)return;
   const ehOrc=tipo==='orcamento';
+  const financeiro=ehOrc?null:resumoFinanceiroPedido(d);
   const statusBadge=ehOrc?`<span class="badge b-${d.status}">${STATUS_ORC[d.status]}</span>`:`<span class="badge b-${d.status}">${STATUS_PED[d.status]}</span>`;
   const linhas=d.itens.map(i=>`<tr><td>${esc(i.nome)}</td><td class="num">${fmtQtd(i.qtd)}</td><td class="num">${fmtCustoUnit(i.precoUnit)}</td><td class="num">${fmtBRL(subtotalDoc(i))}</td></tr>`).join('');
   let botoes='',outrasAcoes='';
@@ -2320,11 +2524,12 @@ function verDoc(tipo,id){
     ${d.titulo?`<p style="font-size:1.05rem"><strong>${esc(d.titulo)}</strong></p>`:''}
     <p><strong>Cliente:</strong> ${esc(d.cliente||'—')} &nbsp; <strong>Data:</strong> ${fmtData(d.data)}${!ehOrc&&d.prazo?' &nbsp; <strong>Prazo:</strong> '+fmtData(d.prazo):''}</p>
     ${d.obs?`<p class="muted">${esc(d.obs)}</p>`:''}
+    ${!ehOrc?financeiroPedidoHTML(d,financeiro):''}
     <table class="grid"><thead><tr><th>Item</th><th class="num">Quantidade</th><th class="num">Valor unitário</th><th class="num">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
     <div class="resumo-linha total"><span>Total</span><span>${fmtBRL(totalDocumento(d))}</span></div>
     ${prazoCampo}
     ${orcamentoVinculado?`<button class="link-acao" onclick="verDoc('orcamento','${orcamentoVinculado.id}')">Ver orçamento ${esc(orcamentoVinculado.numero)} →</button>`:''}
-    ${!ehOrc?materiaisPedidoHTML(d):''}
+    ${!ehOrc?materiaisPedidoHTML(d,financeiro):''}
     <details><summary>Outras ações</summary><div class="acoes">${outrasAcoes}</div></details>
     <div class="acoes">${botoes}</div>`);
 }
@@ -2339,6 +2544,7 @@ function aprovarOrcamento(id){
   o.status='aprovado';
   o.itens.forEach(prepararItemDocumento);
   const ped={id:uid('pd'),numero:'PED-'+String(db.seq.pedido++).padStart(4,'0'),orcamentoId:o.id,titulo:o.titulo,data:hojeISO(),cliente:o.cliente,obs:o.obs,itens:JSON.parse(JSON.stringify(o.itens)),total:totalDocumento(o),status:'pendente',prazo:'',criadoEm:new Date().toISOString()};
+  prepararFinanceiroPedido(ped);
   db.pedidos.push(ped);saveDB();fecharModal();showView('pedidos');
   toast('Orçamento aprovado. Pedido '+ped.numero+' criado.');
 }
